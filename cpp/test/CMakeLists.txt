@@ -1,0 +1,26 @@
+cmake_minimum_required(VERSION 3.28.1)
+
+project(MC_PROTOCOL_TEST VERSION 1.0)
+
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+# set(CMAKE_PREFIX_PATH )
+
+# find_package()
+
+# include_directories()
+# link_directories()
+
+if (MSVC)
+    add_compile_options(/wd4819)
+endif ()
+
+file(GLOB SOURCES "../minecraft/src/*.cpp")
+
+add_executable(minecraft_protocol_test
+        ${SOURCES}
+        test.cpp
+)
+
+# target_link_libraries(MyTestExecutable PRIVATE ${Boost_LIBRARIES})

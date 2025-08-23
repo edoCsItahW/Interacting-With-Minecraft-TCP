@@ -18,7 +18,7 @@
 #pragma once
 
 #include "../type/varNum.h"
-#include "package.h"
+#include "PackageImpl.h"
 #include <functional>
 
 namespace minecraft::protocol {
@@ -30,21 +30,12 @@ namespace minecraft::protocol {
         // Handshake Step
 
         namespace handshake_step {
-#define HANDSHAKE_TYPES_C_HK  VarIntType, StringType, UShortType, VarIntType
 
-#define HANDSHAKE_FIELDS_C_HK "ProtocolVersion"_s, "ServerAddress"_s, "ServerPort"_s, "NextState"_s
+            template<varIntField T0, stringField T1, shortField T2, varIntField T3>
+            using HandShakePacketType = Package<0, FieldItem<"ProtocolVersion", T0>, FieldItem<"ServerAddress", T1>, FieldItem<"ServerPort", T2>, FieldItem<"NextState", T3>>;
 
-            using HandShakeTypes = TypeArgs<HANDSHAKE_TYPES_C_HK>;
-
-            using HandShakePacketType = Package<0, HANDSHAKE_FIELDS_C_HK>;
-
-#define PING_TYPES_C_HK  VarIntType
-
-#define PING_FIELDS_C_HK "Payload"_s
-
-            using PingTypes = TypeArgs<PING_TYPES_C_HK>;
-
-            using PingPacketType = Package<1, PING_FIELDS_C_HK>;
+            template<ubyteField T0>
+            using PingPacketType = Package<1, FieldItem<"Payload", T0>>;
 
             inline PingPacketType PingPacket{UByte<0>()};
         }  // namespace handshake_step
@@ -54,25 +45,15 @@ namespace minecraft::protocol {
         namespace status_step {
             using RequestPacketType = Package<0>;
 
-#define PING_TYPES_S_ST  LongType
-
-#define PING_FIELDS_S_ST "Payload"_s
-
-            using PingTypes = TypeArgs<PING_TYPES_S_ST>;
-
-            using PingPacketType = Package<1, PING_FIELDS_S_ST>;
+            template<longField T0>
+            using PingPacketType = Package<1, FieldItem<"Payload", T0>>;
         }  // namespace status_step
 
         // Login Step
 
         namespace login_step {
-#define LOGIN_START_TYPES_C_LG  StringType, UUIDType
-
-#define LOGIN_START_FIELDS_C_LG "Name"_s, "UUID"_s
-
-            using LoginStartTypes = TypeArgs<LOGIN_START_TYPES_C_LG>;
-
-            using LoginStartPacketType = Package<0, LOGIN_START_FIELDS_C_LG>;
+            template<stringField T0, uuidField T1>
+            using LoginStartPacketType = Package<0, FieldItem<"Name", T0>, FieldItem<"UUID", T1>>;
 
             // TODO: Implement CompressionPacketType
 
@@ -83,47 +64,23 @@ namespace minecraft::protocol {
 
     namespace server_bound {
         namespace status_step {
-#define RESPONSE_TYPES_S_ST  StringType
+            template<stringField T0>
+            using ResponsePacketType = Package<0, FieldItem<"JSON", T0>>;
 
-#define RESPONSE_FIELDS_S_ST "JSON"_s
-
-            using ResponseTypes = TypeArgs<RESPONSE_TYPES_S_ST>;
-
-            using ResponsePacketType = Package<0, RESPONSE_FIELDS_S_ST>;
-
-#define PONG_TYPES_S_ST  LongType
-
-#define PONG_FIELDS_S_ST "Payload"_s
-
-            using PongTypes = TypeArgs<PONG_TYPES_S_ST>;
-
-            using PongPacketType = Package<1, PONG_FIELDS_S_ST>;
+            template<longField T0>
+            using PongPacketType = Package<1, FieldItem<"Payload", T0>>;
         }  // namespace status_step
 
         namespace login_step {
-#define DISCONNECT_TYPES_S_LG     StringType
-
-#define DISCONNECT_FIELDS_S_LG    "Reason"_s
-
             // TODO: Implement DisconnectPacketType
 
             // TODO: Implement EncryptionRequestPacketType
 
-#define LOGIN_SUCCESS_TYPES_S_LG  UUIDType, StringType
+            template<uuidField T0, stringField T1>
+            using LoginSuccessPacketType = Package<0, FieldItem<"UUID", T0>, FieldItem<"Username", T1>>;
 
-#define LOGIN_SUCCESS_FIELDS_S_LG "UUID"_s, "Username"_s
-
-            using LoginSuccessTypes = TypeArgs<LOGIN_SUCCESS_TYPES_S_LG>;
-
-            using LoginSuccessPacketType = Package<0, LOGIN_SUCCESS_FIELDS_S_LG>;
-
-#define COMPRESSION_TYPES_S_LG  VarIntType
-
-#define COMPRESSION_FIELDS_S_LG "Threshold"_s
-
-            using CompressionTypes = TypeArgs<COMPRESSION_TYPES_S_LG>;
-
-            using CompressionPacketType = Package<3, COMPRESSION_FIELDS_S_LG>;
+            template<varIntField T0>
+            using CompressionPacketType = Package<3, FieldItem<"Threshold", T0>>;
 
             // TODO: Implement PluginRequestPacketType
 

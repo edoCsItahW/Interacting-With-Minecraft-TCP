@@ -14,14 +14,14 @@
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
 
+#include "../minecraft/src/client/client.h"
+#include "../minecraft/src/protocol/package/PackageImpl.h"
 #include "../minecraft/src/protocol/package/definition.h"
-#include "../minecraft/src/protocol/package/package.h"
 #include "../minecraft/src/protocol/type/integer.h"
 #include "../minecraft/src/protocol/type/mcuuid.h"
 #include "../minecraft/src/protocol/type/str.h"
 #include "../minecraft/src/protocol/type/varNum.h"
 #include "../minecraft/src/utils/utils.h"
-#include "../minecraft/src/client/client.h"
 #include <iostream>
 #include <sstream>
 
@@ -182,7 +182,7 @@ void package_test() {
     using namespace minecraft;
     protocol::client_bound::handshake_step::HandShakePacketType handShake{protocol::VarInt<765>(), protocol::String<"localhost">(), protocol::UShort<25565>(), protocol::VarInt<2>()};
 
-    auto handShakeBytes = handShake.serialize();
+    auto handShakeBytes = handShake.serialize(false, -1);
 
     std::cout << "HandShake serialized bytes: " << std::endl;
     print_bytes(handShakeBytes);
@@ -199,6 +199,7 @@ void client_test() {
 
     client.start();
 }
+
 
 int main() {
     client_test();

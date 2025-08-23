@@ -9,8 +9,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 # find_package()
 
-# include_directories()
-# link_directories()
+#link_directories()
+
+include_directories(
+        ${CMAKE_SOURCE_DIR}/../zlib/include
+)
 
 if (MSVC)
     add_compile_options(/wd4819)
@@ -23,4 +26,6 @@ add_executable(minecraft_protocol_test
         test.cpp
 )
 
-# target_link_libraries(MyTestExecutable PRIVATE ${Boost_LIBRARIES})
+target_link_libraries(minecraft_protocol_test
+        ${CMAKE_SOURCE_DIR}/../zlib/lib/zlibstatic.lib
+)

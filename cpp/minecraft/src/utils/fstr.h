@@ -29,6 +29,24 @@ namespace minecraft {
         constexpr FStr(const char (&value)[N]) {
             for (std::size_t i = 0; i < N - 1; ++i) data[i] = static_cast<T>(value[i]);
         }
+
+        constexpr bool operator==(const FStr& other) const {
+            return size != other.size ? false : data == other.data;  // c++20
+        }
+
+        template<std::size_t M>
+        constexpr bool operator==(const T (&other)[M]) const {
+            if constexpr ((std::is_same_v<T, char> && M != size + 1) || M != size)
+                return false;
+
+            return std::equal(data.begin(), data.end(), other);
+        }
+
+        constexpr bool equals(const T* other, std::size_t len) {
+            if (len != size) return false;
+
+            return std::equal(data.begin(), data.end(), other);
+        }
     };
 
     template<std::size_t N>

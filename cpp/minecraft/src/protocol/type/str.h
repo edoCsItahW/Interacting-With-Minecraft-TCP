@@ -42,6 +42,14 @@ namespace minecraft::protocol {
 
         String(const std::string &value);
 
+        String(const String &other) = default;
+
+        String(String &&other) = default;
+
+        String &operator=(const String &other) = default;
+
+        String &operator=(String &&other) = default;
+
         [[nodiscard]] auto serialize() const;
 
         static auto deserialize(const std::byte *data);
@@ -60,6 +68,16 @@ namespace minecraft::protocol {
         static constexpr auto value = V.data;
 
         static constexpr auto size = V.size;
+
+        String() = default;
+
+        String(const String &other) = default;
+
+        String(String &&other) = default;
+
+        String &operator=(const String &other) = default;
+
+        String &operator=(String &&other) = default;
 
         static constexpr auto serialize();
 
@@ -85,7 +103,7 @@ namespace minecraft::protocol {
     inline constexpr bool is_string_field_v = is_string_field<T>::value;
 
     template<typename T>
-    concept string_field = is_string_field_v<T>;
+    concept stringField = is_string_field_v<T>;
 
 }  // namespace minecraft::protocol
 

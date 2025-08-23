@@ -6,15 +6,15 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file package.h
- * @author edocsitahw
+ * @file oldPackage.h 
+ * @author edocsitahw 
  * @version 1.1
- * @date 2025/08/18 20:27
+ * @date 2025/08/23 10:14
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef PACKAGE_H
-#define PACKAGE_H
+#ifndef OLDPACKAGE_H
+#define OLDPACKAGE_H
 #pragma once
 
 #include "../type/boolean.h"
@@ -39,32 +39,45 @@ namespace minecraft::protocol {
 
         template<typename T>
         inline constexpr bool is_byte_array_v = is_byte_array<T>::value;
+    }  // namespace detail
 
-        template<typename T>
-        concept is_builtin_field = is_boolean_field_v<T> || is_integer_field_v<T> || is_uuid_field_v<T> || is_string_field_v<T> || is_var_num_field_v<T>;
+    template<typename T>
+    concept is_builtin_field = is_boolean_field_v<T> || is_integer_field_v<T> || is_uuid_field_v<T> || is_string_field_v<T> || is_var_num_field_v<T>;
 
-        template<typename T>
-        concept is_custom_field = requires {
-            T::deserializer;
+    template<typename T>
+    concept is_custom_field = requires {
+        T::deserializer;
 
-            requires std::is_invocable_v<decltype(T::deserializer), const std::byte*>;
+        requires std::is_invocable_v<decltype(T::deserializer), const std::byte*>;
 
-            requires requires(T t) {
-                { t.serialize() };
-                requires is_byte_array_v<std::remove_cvref_t<decltype(t.serialize())>> || std::is_same_v<std::remove_cvref_t<decltype(t.serialize())>, std::vector<std::byte>>;
-            } || requires {
-                { T::serialize() };
-                requires is_byte_array_v<std::remove_cvref_t<decltype(T::serialize())>>;
-            };
+        requires requires(T t) {
+            { t.serialize() };
+            requires detail::is_byte_array_v<std::remove_cvref_t<decltype(t.serialize())>> || std::is_same_v<std::remove_cvref_t<decltype(t.serialize())>, std::vector<std::byte>>;
+        } || requires {
+            { T::serialize() };
+            requires detail::is_byte_array_v<std::remove_cvref_t<decltype(T::serialize())>>;
         };
+    };
 
-        template<typename T>
-        concept is_field = is_builtin_field<T> || is_custom_field<T>;
+    template<typename T>
+    concept isField = is_builtin_field<T> || is_custom_field<T>;
+
+    namespace detail {
+
+        template<int I, isField... Ts>
+        auto compressSerialize(const std::tuple<Ts...>& fields, int thresold);
+
+        template<int I, isField... Ts>
+        auto uncompressSerialize(const std::tuple<Ts...>& fields);
+
+        auto compressDeserizlizeUnkown(const std::byte* data);
+
+        auto uncompressDeserizlizeUnkown(const std::byte* data);
 
         template<auto...>
         struct ValueArgs {};
 
-        template<typename, is_field...>
+        template<typename, isField...>
         struct PackageImpl;
 
         template<>
@@ -76,7 +89,20 @@ namespace minecraft::protocol {
 
             PackageImpl(int id, std::size_t size, const std::vector<std::byte>& data);
 
+            friend auto compressDeserizlizeUnknown(const std::byte* data);
+            friend auto uncompressDeserizlizeUnknown(const std::byte* data);
+
         public:
+            PackageImpl(const PackageImpl& other) = default;
+
+            PackageImpl(PackageImpl&& other) noexcept = default;
+
+            PackageImpl& operator=(const PackageImpl& other) = default;
+
+            PackageImpl& operator=(PackageImpl&& other) noexcept = default;
+
+            ~PackageImpl() = default;
+
             [[nodiscard]] int id() const;
 
             [[nodiscard]] std::size_t size() const;
@@ -86,18 +112,33 @@ namespace minecraft::protocol {
             ///< 未知的包禁止序列化
             // std::vector<std::byte> serialize() const;
 
-            static auto deserialize(const std::byte* data);
+            static auto deserialize(const std::byte* data, bool compressed);
 
             [[nodiscard]] std::string toString() const;
 
             [[nodiscard]] std::string toHexString() const;
         };
 
-        template<int I, FStrChar... Vs, is_field... Ts>
+        template<typename>
+        struct is_package_impl : std::false_type {};
+
+        template<>
+        struct is_package_impl<PackageImpl<ValueArgs<>>> : std::true_type {};
+
+        template<int I, FStrChar... Vs, isField... Ts>
+        struct is_package_impl<PackageImpl<ValueArgs<I, Vs...>, Ts...>> : std::true_type {};
+
+        template<typename T>
+        inline constexpr bool is_package_impl_v = is_package_impl<T>::value;
+
+        template<typename T>
+        concept isPackageImpl = is_package_impl_v<T>;
+
+        template<int I, FStrChar... Vs, isField... Ts>
             requires(sizeof...(Ts) == sizeof...(Vs))
         struct PackageImpl<ValueArgs<I, Vs...>, Ts...> {
         private:
-            std::tuple<Ts...> fields;
+            std::tuple<Ts...> fields_;
             mutable std::vector<std::byte> data;
             mutable std::size_t size_;
 
@@ -108,27 +149,48 @@ namespace minecraft::protocol {
 
             constexpr PackageImpl(Ts&&... args);
 
+            constexpr PackageImpl(const PackageImpl& other) = default;
+
+            constexpr PackageImpl(PackageImpl&& other) noexcept = default;
+
+            constexpr PackageImpl& operator=(const PackageImpl& other) = default;
+
+            constexpr PackageImpl& operator=(PackageImpl&& other) noexcept = default;
+
             [[nodiscard]] std::size_t size() const;
 
-            auto serialize() const;
+            [[nodiscard]] std::tuple<Ts...> fields() const;
 
-            static auto deserialize(const std::byte* data);
+            template<typename >
+            void onField(const char* name, /* TODO: 最适形式 */ callback) const;
+
+            auto serialize(bool compressed, int thresold) const;
+
+            static auto deserialize(const std::byte* data, bool compressed = false);
 
             [[nodiscard]] std::string toString() const;
 
             [[nodiscard]] std::string toHexString() const;
         };
 
-
     }  // namespace detail
 
-    template<detail::is_field...>
+    template<isField...>
     struct TypeArgs;
+
+    template<isField... Ts>
+    struct TypeArgs {
+        template<int I, FStrChar... Vs>
+        static auto deserialize(const std::byte* data, bool compressed = false);
+
+        template<int I, FStrChar... Vs>
+        static auto makePackage(detail::PackageImpl<detail::ValueArgs<I, Vs...>, Ts...>&& impl);
+    };
 
     template<typename>
     struct is_type_args : std::false_type {};
 
-    template<detail::is_field... Ts>
+    template<isField... Ts>
     struct is_type_args<TypeArgs<Ts...>> : std::true_type {};
 
     template<typename T>
@@ -144,11 +206,11 @@ namespace minecraft::protocol {
     public:
         [[nodiscard]] int id() const;
 
-        std::size_t size() const;
+        [[nodiscard]] std::size_t size() const;
 
         [[nodiscard]] std::vector<std::byte> data() const;
 
-        [[nodiscard]] static auto deserialize(const std::byte* data);
+        [[nodiscard]] static auto deserialize(const std::byte* data, bool compressed = false);
 
         [[nodiscard]] std::string toString() const;
 
@@ -158,44 +220,43 @@ namespace minecraft::protocol {
     template<int I, FStrChar... Vs>
     struct Package<I, Vs...> {
     private:
-        std::function<std::vector<std::byte>()> serializeFunc_;
+        std::function<std::vector<std::byte>(bool, int)> serializeFunc_;
         std::function<std::string()> toStringFunc_;
         std::function<std::string()> toHexStringFunc_;
         std::function<std::size_t()> getSizeFunc_;
+
+        std::function<void(const char*,)>
+
+        template<isField... Ts>
+        constexpr Package(detail::PackageImpl<detail::ValueArgs<I, Vs...>, Ts...>&& impl);
+
+        template<isField... Ts>
+        friend struct TypeArgs;  // 使TypeArgs可以访问Package的private构造函数
 
     public:
         static constexpr auto id = I;
 
         static constexpr std::array<const char*, sizeof...(Vs)> names = std::array{Vs.data.data()...};
 
-        template<detail::is_field... Ts>
-        constexpr Package(detail::PackageImpl<detail::ValueArgs<I, Vs...>, Ts...>&& impl);
-
-        template<detail::is_field... Ts>
+        template<isField... Ts>
         constexpr Package(Ts&&... args);
 
         [[nodiscard]] std::size_t size() const;
 
-        auto serialize() const;
+        template<typename >
+        void onField(const char* name, /* TODO: 最适形式 */ callback) const;
 
-        template<detail::is_field... Ts>
-        static auto deserialize(const std::byte* data);
+        auto serialize(bool compressed = false, int thresold = 0) const;
+
+        template<isField... Ts>
+        static auto deserialize(const std::byte* data, bool compressed = false);
 
         template<isTypeArgs T>
-        static auto deserialize(const std::byte* data);
+        static auto deserialize(const std::byte* data, bool compressed = false);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
-    };
-
-    template<detail::is_field... Ts>
-    struct TypeArgs {
-        template<int I, FStrChar... Vs>
-        static auto deserialize(const std::byte* data);
-
-        template<int I, FStrChar... Vs>
-        static auto makePackage(detail::PackageImpl<detail::ValueArgs<I, Vs...>, Ts...>&& impl);
     };
 
     template<typename>
@@ -227,6 +288,6 @@ namespace minecraft::protocol {
 
 }  // namespace minecraft::protocol
 
-#include "package.hpp"
+#include "oldPackage.hpp"
 
-#endif  // PACKAGE_H
+#endif //OLDPACKAGE_H

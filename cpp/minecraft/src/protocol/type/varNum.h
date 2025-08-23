@@ -59,6 +59,14 @@ namespace minecraft::protocol {
 
             explicit VarNum(T value);
 
+            VarNum(const VarNum &other) = default;
+
+            VarNum(VarNum &&other) = default;
+
+            VarNum &operator=(const VarNum &other) = default;
+
+            VarNum &operator=(VarNum &&other) = default;
+
             auto serialize() const;
 
             static auto deserialize(const std::byte *data);
@@ -79,6 +87,16 @@ namespace minecraft::protocol {
 
             static constexpr std::size_t size = varNumSize(value);
 
+            VarNum() = default;
+
+            VarNum(const VarNum &) = default;
+
+            VarNum(VarNum &&) = default;
+
+            VarNum &operator=(const VarNum &) = default;
+
+            VarNum &operator=(VarNum &&) = default;
+
             static constexpr auto serialize();
 
             static auto deserialize(const std::byte *data);
@@ -94,10 +112,34 @@ namespace minecraft::protocol {
 
     using VarIntType = VarInt<>;
 
+    template<typename>
+    struct is_var_int_field : std::false_type {};
+
+    template<int... Vs>
+    struct is_var_int_field<VarInt<Vs...>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool is_var_int_field_v = is_var_int_field<T>::value;
+
+    template<typename T>
+    concept varIntField = is_var_int_field_v<T>;
+
     template<long... Vs>
     using VarLong = detail::VarNum<long, Vs...>;
 
     using VarLongType = VarLong<>;
+
+    template<typename>
+    struct is_var_long_field : std::false_type {};
+
+    template<long... Vs>
+    struct is_var_long_field<VarLong<Vs...>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool is_var_long_field_v = is_var_long_field<T>::value;
+
+    template<typename T>
+    concept varLongField = is_var_long_field_v<T>;
 
     template<typename>
     struct is_var_num_field : std::false_type {};
@@ -112,7 +154,7 @@ namespace minecraft::protocol {
     inline constexpr bool is_var_num_field_v = is_var_num_field<T>::value;
 
     template<typename T>
-    concept var_num_field = is_var_num_field_v<T>;
+    concept varNumField = is_var_num_field_v<T>;
 
 }  // namespace minecraft::protocol
 

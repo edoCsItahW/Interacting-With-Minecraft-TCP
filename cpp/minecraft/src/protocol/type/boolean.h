@@ -41,6 +41,14 @@ namespace minecraft::protocol {
 
         Boolean(bool value);
 
+        Boolean(const Boolean& other) = default;
+
+        Boolean(Boolean&& other) = default;
+
+        Boolean& operator=(const Boolean& other) = default;
+
+        Boolean& operator=(Boolean&& other) = default;
+
         [[nodiscard]] auto serialize() const;
 
         static auto deserialize(const std::byte* data);
@@ -57,6 +65,16 @@ namespace minecraft::protocol {
         static constexpr bool value = V;
 
         static constexpr std::size_t size = 1;
+
+        Boolean() = default;
+
+        Boolean(const Boolean&) = default;
+
+        Boolean(Boolean&&) = default;
+
+        Boolean& operator=(const Boolean&) = default;
+
+        Boolean& operator=(Boolean&&) = default;
 
         static constexpr auto serialize();
 

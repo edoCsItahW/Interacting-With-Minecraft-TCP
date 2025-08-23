@@ -25,8 +25,14 @@ namespace minecraft::client {
         : ClientBase(std::move(ip), port, debug) {}
 
     inline void Client::handleRecv(std::vector<std::byte>& msg, const std::size_t size) const {
-        // auto packet = protocol::Package<>::deserialize(msg.data());
-        protocol::parsePacket(state, msg, [](const auto& packet) { networkInfo<TO_CLIENT>(packet.toString()); });
+        // auto packet = protocol::PackageImpl<>::deserialize(msg.data());
+        protocol::parsePacket(state, msg, []<protocol::isPackage T>(const T& packet) {
+            if constexpr (std::is_same_v<T, protocol::server_bound::login_step::CompressionPacketType<>>)
+                packet.onField("threshold", [&]<protocol::isField F>(const F& field){
+                    std::cout << field.toString() << std::endl;
+                });
+            networkInfo<TO_CLIENT>(packet.toString());
+        });
     }
 
     inline std::vector<std::byte> Client::castChar2T(char* msg, const std::size_t size) const {

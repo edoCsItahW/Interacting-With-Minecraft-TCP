@@ -46,6 +46,14 @@ namespace minecraft::protocol {
 
         UUID(const std::string& str);
 
+        UUID(const UUID&) = default;
+
+        UUID(UUID&&) = default;
+
+        UUID& operator=(const UUID&) = default;
+
+        UUID& operator=(UUID&&) = default;
+
         [[nodiscard]] auto serialize() const;
 
         static auto deserialize(const std::byte* data);
@@ -66,6 +74,16 @@ namespace minecraft::protocol {
         static constexpr std::size_t size = 16;
 
         static constexpr auto value = V;
+
+        UUID() = default;
+
+        UUID(const UUID&) = default;
+
+        UUID(UUID&&) = default;
+
+        UUID& operator=(const UUID&) = default;
+
+        UUID& operator=(UUID&&) = default;
 
         static constexpr auto serialize();
 
@@ -120,7 +138,7 @@ namespace minecraft::protocol {
     inline constexpr bool is_uuid_field_v = is_uuid_field<T>::value;
 
     template<typename T>
-    concept uuid_field = is_uuid_field_v<T>;
+    concept uuidField = is_uuid_field_v<T>;
 
 }  // namespace minecraft::protocol
 

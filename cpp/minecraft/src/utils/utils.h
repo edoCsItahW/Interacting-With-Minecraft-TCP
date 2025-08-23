@@ -67,6 +67,25 @@ namespace minecraft {
         requires std::is_enum_v<T>
     constexpr auto enumToStr(T value);
 
+    std::vector<std::byte> decompressData(const std::vector<std::byte>& data, std::size_t size);
+
+    std::vector<std::byte> compressData(const std::vector<std::byte>& data);
+
+    template<typename T>
+    struct ArgsTraits;
+
+    template<typename R, typename... Args>
+    struct ArgsTraits<R(Args...)> {
+        using ReturnType = R;
+        using ArgTypes = std::tuple<Args...>;
+    };
+
+    template<typename R, typename... Args>
+    struct ArgsTraits<R(*)(Args...)> {
+        using ReturnType = R;
+        using ArgTypes = std::tuple<Args...>;
+    };
+
 }  // namespace minecraft
 
 #include "utils.hpp"

@@ -53,8 +53,8 @@ namespace minecraft::protocol {
         void parseStatusPacket(const int id, const std::vector<std::byte>& data, const F& f) {
             using namespace server_bound::status_step;
             switch (id) {
-                case 0x00: f(ResponsePacketType::deserialize<ResponseTypes>(data.data())); break;
-                case 0x01: f(PongPacketType::deserialize<PongTypes>(data.data())); break;
+                case 0x00: f(ResponsePacketType<>::deserialize(data.data())); break;
+                case 0x01: f(PongPacketType<>::deserialize(data.data())); break;
                 default: throw std::runtime_error("Unknown status packet id: " + std::to_string(id));
             }
         }
@@ -63,8 +63,8 @@ namespace minecraft::protocol {
         void parseLoginPacket(const int id, const std::vector<std::byte>& data, const F& f) {
             using namespace server_bound::login_step;
             switch (id) {
-                case 0x00: f(LoginSuccessPacketType::deserialize<LoginSuccessTypes>(data.data())); break;
-                case 0x03: f(CompressionPacketType::deserialize<CompressionTypes>(data.data())); break;
+                case 0x00: f(LoginSuccessPacketType<>::deserialize(data.data())); break;
+                case 0x03: f(CompressionPacketType<>::deserialize(data.data())); break;
                 default: throw std::runtime_error("Unknown login packet id: " + std::to_string(id));
             }
         }
@@ -76,7 +76,7 @@ namespace minecraft::protocol {
 
         template<typename F>
         void parseUnknownPacket(const std::vector<std::byte>& data, const F& f) {
-            f(Package<>::deserialize(data.data()));
+            f(PackageImpl<>::deserialize(data.data()));
         }
 
     }  // namespace detail

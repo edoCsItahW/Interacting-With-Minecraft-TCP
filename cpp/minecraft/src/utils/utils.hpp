@@ -19,6 +19,7 @@
 
 #include <iomanip>
 #include <sstream>
+#include <zlib.h>
 
 namespace minecraft {
 
@@ -125,6 +126,58 @@ namespace minecraft {
         return names[static_cast<std::size_t>(value)];
     }
 
+    inline std::vector<std::byte> decompressData(const std::vector<std::byte>& data, std::size_t size) {
+        std::vector<std::byte> result{size};
+
+        z_stream stream;
+        stream.next_in   = (Bytef*)data.data();
+        stream.avail_in  = data.size();
+        stream.next_out  = reinterpret_cast<Bytef*>(result.data());
+        stream.avail_out = result.size();
+
+        stream.zalloc = Z_NULL;
+        stream.zfree  = Z_NULL;
+        stream.opaque = Z_NULL;
+
+        int ret = inflateInit(&stream);
+        if (ret != Z_OK) throw std::runtime_error("inflateInit failed");
+
+        ret = inflate(&stream, Z_FINISH);
+        inflateEnd(&stream);
+
+        if (ret != Z_STREAM_END) throw std::runtime_error("inflate failed");
+
+        return result;
+    }
+
+    inline std::vector<std::byte> compressData(const std::vector<std::byte>& data) {
+        if (data.empty()) return {};
+
+        uLongf size = compressBound(data.size());
+        std::vector<std::byte> result{size};
+
+        z_stream stream;
+        stream.next_in   = reinterpret_cast<Bytef*>(const_cast<std::byte*>(data.data()));
+        stream.avail_in  = data.size();
+        stream.next_out  = reinterpret_cast<Bytef*>(result.data());
+        stream.avail_out = size;
+
+        stream.zalloc = Z_NULL;
+        stream.zfree  = Z_NULL;
+        stream.opaque = Z_NULL;
+
+        int ret = deflateInit(&stream, Z_BEST_COMPRESSION);
+        if (ret != Z_OK) throw std::runtime_error("deflateInit failed");
+
+        ret = deflate(&stream, Z_FINISH);
+        deflateEnd(&stream);
+
+        if (ret != Z_STREAM_END) throw std::runtime_error("deflate failed");
+
+        result.resize(stream.total_out);
+
+        return result;
+    }
 
 }  // namespace minecraft
 

@@ -23,20 +23,18 @@
 
 namespace minecraft::protocol {
 
-    template<FStrByte...>
-    struct String;
-
-    template<>
-    struct String<> {
+    struct String {
     private:
         mutable std::vector<std::byte> data;
+
+        std::size_t size_;
+
+        std::string value_;
 
     public:
         using type = std::string;
 
-        std::string value;
-
-        std::size_t size;
+        using serializeType = std::vector<std::byte>;
 
         String();
 
@@ -50,7 +48,11 @@ namespace minecraft::protocol {
 
         String &operator=(String &&other) = default;
 
-        [[nodiscard]] auto serialize() const;
+        [[nodiscard]] std::size_t size() const;
+
+        [[nodiscard]] type value() const;
+
+        [[nodiscard]] serializeType serialize() const;
 
         static auto deserialize(const std::byte *data);
 
@@ -59,51 +61,8 @@ namespace minecraft::protocol {
         [[nodiscard]] std::string toHexString() const;
     };
 
-    String(std::string_view) -> String<>;
-
-    template<FStrByte V>
-    struct String<V> {
-        using type = std::array<std::byte, V.size>;
-
-        static constexpr auto value = V.data;
-
-        static constexpr auto size = V.size;
-
-        String() = default;
-
-        String(const String &other) = default;
-
-        String(String &&other) = default;
-
-        String &operator=(const String &other) = default;
-
-        String &operator=(String &&other) = default;
-
-        static constexpr auto serialize();
-
-        static auto deserialize(const std::byte *data);
-
-        static std::string toString();
-
-        static std::string toHexString();
-    };
-
-    using StringType = String<>;
-
-    template<typename>
-    struct is_string_field : std::false_type {};
-
-    template<>
-    struct is_string_field<String<>> : std::true_type {};
-
-    template<FStrByte V>
-    struct is_string_field<String<V>> : std::true_type {};
-
     template<typename T>
-    inline constexpr bool is_string_field_v = is_string_field<T>::value;
-
-    template<typename T>
-    concept stringField = is_string_field_v<T>;
+    concept is_string_field = std::is_same_v<T, String>;
 
 }  // namespace minecraft::protocol
 

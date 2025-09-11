@@ -18,6 +18,7 @@
 #pragma once
 
 #include "../protocol/package/definition.h"
+#include "../protocol/package/package.h"
 #include "clientBase.h"
 
 namespace minecraft::client {
@@ -28,10 +29,20 @@ namespace minecraft::client {
 
         void start() override;
 
+        // template<protocol::is_package T, typename F>
+        // void onPackage(F&& handler);
+
+        template<protocol::is_package T>
+        void emit(T&& package, std::optional<std::function<void()>> callback = std::nullopt);
+
     private:
         protocol::State state = protocol::State::HANDSHAKE;
 
-        void handleRecv(std::vector<std::byte>& msg, std::size_t size) const override;
+        bool compress = false;
+
+        int threshold = 0;
+
+        void handleRecv(std::vector<std::byte>& msg, std::size_t size) override;
 
         std::vector<std::byte> castChar2T(char* msg, std::size_t size) const override;
 

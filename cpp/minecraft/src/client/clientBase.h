@@ -73,7 +73,7 @@ namespace minecraft::client {
 
         virtual T castChar2T(char* msg, std::size_t size) const = 0;
 
-        virtual void handleRecv(T& msg, std::size_t size) const;
+        virtual void handleRecv(T& msg, std::size_t size);
 
         void recvLoop();
 

@@ -40,20 +40,19 @@ namespace minecraft::protocol {
         template<intOrLong T>
         T varNumDeserialize(const std::byte *value);
 
-        template<intOrLong T, auto...>
-        struct VarNum;
-
         template<intOrLong T>
-        struct VarNum<T> {
+        struct VarNum {
         private:
             mutable std::vector<std::byte> data;
+
+            std::size_t size_;
+
+            T value_;
 
         public:
             using type = T;
 
-            T value;
-
-            std::size_t size;
+            using serializeType = std::vector<std::byte>;
 
             VarNum();
 
@@ -67,7 +66,11 @@ namespace minecraft::protocol {
 
             VarNum &operator=(VarNum &&other) = default;
 
-            auto serialize() const;
+            [[nodiscard]] std::size_t size() const;
+
+            [[nodiscard]] type value() const;
+
+            [[nodiscard]] serializeType serialize() const;
 
             static auto deserialize(const std::byte *data);
 
@@ -76,85 +79,29 @@ namespace minecraft::protocol {
             [[nodiscard]] std::string toHexString() const;
         };
 
-        template<intOrLong T>
-        VarNum(T) -> VarNum<T>;
-
-        template<intOrLong T, T V>
-        struct VarNum<T, V> {
-            using type = T;
-
-            static constexpr T value = V;
-
-            static constexpr std::size_t size = varNumSize(value);
-
-            VarNum() = default;
-
-            VarNum(const VarNum &) = default;
-
-            VarNum(VarNum &&) = default;
-
-            VarNum &operator=(const VarNum &) = default;
-
-            VarNum &operator=(VarNum &&) = default;
-
-            static constexpr auto serialize();
-
-            static auto deserialize(const std::byte *data);
-
-            static std::string toString();
-
-            static std::string toHexString();
-        };
     }  // namespace detail
 
-    template<int... Vs>
-    using VarInt = detail::VarNum<int, Vs...>;
+    using VarInt = detail::VarNum<int>;
 
-    using VarIntType = VarInt<>;
+    template<typename T>
+    concept is_var_int_field = std::is_same_v<T, VarInt>;
+
+    using VarLong = detail::VarNum<long>;
+
+    template<typename T>
+    concept is_var_long_field = std::is_same_v<T, VarLong>;
 
     template<typename>
-    struct is_var_int_field : std::false_type {};
-
-    template<int... Vs>
-    struct is_var_int_field<VarInt<Vs...>> : std::true_type {};
-
-    template<typename T>
-    inline constexpr bool is_var_int_field_v = is_var_int_field<T>::value;
-
-    template<typename T>
-    concept varIntField = is_var_int_field_v<T>;
-
-    template<long... Vs>
-    using VarLong = detail::VarNum<long, Vs...>;
-
-    using VarLongType = VarLong<>;
-
-    template<typename>
-    struct is_var_long_field : std::false_type {};
-
-    template<long... Vs>
-    struct is_var_long_field<VarLong<Vs...>> : std::true_type {};
-
-    template<typename T>
-    inline constexpr bool is_var_long_field_v = is_var_long_field<T>::value;
-
-    template<typename T>
-    concept varLongField = is_var_long_field_v<T>;
-
-    template<typename>
-    struct is_var_num_field : std::false_type {};
+    struct isVarNumField : std::false_type {};
 
     template<detail::intOrLong T>
-    struct is_var_num_field<detail::VarNum<T>> : std::true_type {};
-
-    template<detail::intOrLong T, T V>
-    struct is_var_num_field<detail::VarNum<T, V>> : std::true_type {};
+    struct isVarNumField<detail::VarNum<T>> : std::true_type {};
 
     template<typename T>
-    inline constexpr bool is_var_num_field_v = is_var_num_field<T>::value;
+    inline constexpr bool isVarNumField_v = isVarNumField<T>::value;
 
     template<typename T>
-    concept varNumField = is_var_num_field_v<T>;
+    concept is_var_num_field = isVarNumField_v<T>;
 
 }  // namespace minecraft::protocol
 

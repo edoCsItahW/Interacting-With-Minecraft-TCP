@@ -29,22 +29,22 @@ namespace minecraft::protocol {
         std::string uuidToString(const std::array<std::byte, 16>& uuidBytes);
     }
 
-    template<auto...>
-    struct UUID;
+    struct UUID {
+    private:
 
-    template<>
-    struct UUID<> {
+        static constexpr std::size_t size_ = 16;
+
+        std::array<std::byte, size_> value_;
+
+    public:
+
         using type = std::array<std::byte, 16>;
 
-        static constexpr std::size_t size = 16;
-
-        std::array<std::byte, size> value;
+        using serializeType = std::array<std::byte, 16>;
 
         UUID();
 
-        UUID(const std::array<std::byte, size>& value);
-
-        UUID(const std::string& str);
+        UUID(const std::array<std::byte, size_>& value);
 
         UUID(const UUID&) = default;
 
@@ -54,61 +54,17 @@ namespace minecraft::protocol {
 
         UUID& operator=(UUID&&) = default;
 
-        [[nodiscard]] auto serialize() const;
+        [[nodiscard]] static constexpr std::size_t size();
+
+        [[nodiscard]] type value() const;
+
+        [[nodiscard]] serializeType serialize() const;
 
         static auto deserialize(const std::byte* data);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
-    };
-
-    UUID(const std::array<std::byte, 16>&) -> UUID<>;
-
-    UUID(const std::string&) -> UUID<>;
-
-    template<std::array<std::byte, 16> V>
-    struct UUID<V> {
-        using type = std::array<std::byte, 16>;
-
-        static constexpr std::size_t size = 16;
-
-        static constexpr auto value = V;
-
-        UUID() = default;
-
-        UUID(const UUID&) = default;
-
-        UUID(UUID&&) = default;
-
-        UUID& operator=(const UUID&) = default;
-
-        UUID& operator=(UUID&&) = default;
-
-        static constexpr auto serialize();
-
-        static auto deserialize(const std::byte* data);
-
-        static std::string toString();
-
-        static std::string toHexString();
-    };
-
-    template<FStrChar V>
-    struct UUID<V> {
-        using type = std::string;
-
-        static constexpr std::size_t size = 16;
-
-        static constexpr std::array<char, V.size> value = V.data;
-
-        static constexpr auto serialize();
-
-        static auto deserialize(const std::byte* data);
-
-        static std::string toString();
-
-        static std::string toHexString();
     };
 
     template<typename T>
@@ -120,25 +76,8 @@ namespace minecraft::protocol {
     template<FStrChar V>
     constexpr auto genUUID();
 
-    using UUIDType = UUID<>;
-
-    template<typename>
-    struct is_uuid_field : std::false_type {};
-
-    template<>
-    struct is_uuid_field<UUID<>> : std::true_type {};
-
-    template<std::array<std::byte, 16> V>
-    struct is_uuid_field<UUID<V>> : std::true_type {};
-
-    template<FStrChar V>
-    struct is_uuid_field<UUID<V>> : std::true_type {};
-
     template<typename T>
-    inline constexpr bool is_uuid_field_v = is_uuid_field<T>::value;
-
-    template<typename T>
-    concept uuidField = is_uuid_field_v<T>;
+    concept is_uuid_field = std::is_same_v<T, UUID>;
 
 }  // namespace minecraft::protocol
 

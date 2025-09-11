@@ -18,7 +18,7 @@
 #pragma once
 
 #include "../type/varNum.h"
-#include "PackageImpl.h"
+#include "package.h"
 #include <functional>
 
 namespace minecraft::protocol {
@@ -31,13 +31,10 @@ namespace minecraft::protocol {
 
         namespace handshake_step {
 
-            template<varIntField T0, stringField T1, shortField T2, varIntField T3>
-            using HandShakePacketType = Package<0, FieldItem<"ProtocolVersion", T0>, FieldItem<"ServerAddress", T1>, FieldItem<"ServerPort", T2>, FieldItem<"NextState", T3>>;
+            using HandShakePacketType = Package<0, FieldItem<"ProtocolVersion", VarInt>, FieldItem<"ServerAddress", String>, FieldItem<"ServerPort", UShort>, FieldItem<"NextState", VarInt>>;
 
-            template<ubyteField T0>
-            using PingPacketType = Package<1, FieldItem<"Payload", T0>>;
+            using PingPacketType = Package<1, FieldItem<"Payload", UByte>>;
 
-            inline PingPacketType PingPacket{UByte<0>()};
         }  // namespace handshake_step
 
         // Status Step
@@ -45,44 +42,39 @@ namespace minecraft::protocol {
         namespace status_step {
             using RequestPacketType = Package<0>;
 
-            template<longField T0>
-            using PingPacketType = Package<1, FieldItem<"Payload", T0>>;
+            using PingPacketType = Package<1, FieldItem<"Payload", Long>>;
         }  // namespace status_step
 
         // Login Step
 
         namespace login_step {
-            template<stringField T0, uuidField T1>
-            using LoginStartPacketType = Package<0, FieldItem<"Name", T0>, FieldItem<"UUID", T1>>;
+            using LoginStartPacketType = Package<0, FieldItem<"Name", String>, FieldItem<"UUID", UUID>>;
 
             // TODO: Implement CompressionPacketType
 
         }  // namespace login_step
+
     }  // namespace client_bound
 
     /** Serverbound packets [Server -> Client] */
 
     namespace server_bound {
         namespace status_step {
-            template<stringField T0>
-            using ResponsePacketType = Package<0, FieldItem<"JSON", T0>>;
+            using ResponsePacketType = Package<0, FieldItem<"JSON", String>>;
 
-            template<longField T0>
-            using PongPacketType = Package<1, FieldItem<"Payload", T0>>;
+            using PongPacketType = Package<1, FieldItem<"Payload", Long>>;
         }  // namespace status_step
 
         namespace login_step {
-            // TODO: Implement DisconnectPacketType
+            using DisconnectPacketType = Package<0, FieldItem<"Reason", String>>;
 
             // TODO: Implement EncryptionRequestPacketType
 
-            template<uuidField T0, stringField T1>
-            using LoginSuccessPacketType = Package<0, FieldItem<"UUID", T0>, FieldItem<"Username", T1>>;
+            using LoginSuccessPacketType = Package<2, FieldItem<"UUID", UUID>, FieldItem<"Username", String>>;
 
-            template<varIntField T0>
-            using CompressionPacketType = Package<3, FieldItem<"Threshold", T0>>;
+            using CompressionPacketType = Package<3, FieldItem<"Threshold", VarInt>>;
 
-            // TODO: Implement PluginRequestPacketType
+            // using PluginRequestPacketType = Package<4, FieldItem<"MessageID", VarInt>, FieldItem<"Channel", String>>
 
         }  // namespace login_step
     }  // namespace server_bound
@@ -91,26 +83,26 @@ namespace minecraft::protocol {
 
     namespace detail {
         template<typename F>
-        void parseKnownPacket(State state, const std::vector<std::byte>& data, const F& f);
+        void parseKnownPacket(State state, const std::vector<std::byte>& data, bool compress, const F& f);
 
         template<typename F>
-        void parseHandshakePacket(int, const std::vector<std::byte>&, const F&);
+        void parseHandshakePacket(int, const std::vector<std::byte>&, bool compress, const F&);
 
         template<typename F>
-        void parseStatusPacket(int id, const std::vector<std::byte>& data, const F& f);
+        void parseStatusPacket(int id, const std::vector<std::byte>& data, bool compress, const F& f);
 
         template<typename F>
-        void parseLoginPacket(int id, const std::vector<std::byte>& data, const F& f);
+        void parseLoginPacket(int id, const std::vector<std::byte>& data, bool compress, const F& f);
 
         template<typename F>
-        void parsePlayPacket(int id, const std::vector<std::byte>& data, const F& f);
+        void parsePlayPacket(int id, const std::vector<std::byte>& data, bool compress, const F& f);
 
         template<typename F>
-        void parseUnknownPacket(const std::vector<std::byte>& data, const F& f);
+        void parseUnknownPacket(const std::vector<std::byte>& data, bool compress, const F& f);
     }  // namespace detail
 
     template<typename F>
-    void parsePacket(State state, const std::vector<std::byte>& data, const F& f);
+    void parsePacket(State state, const std::vector<std::byte>& data, bool compress, const F& f);
 
 }  // namespace minecraft::protocol
 

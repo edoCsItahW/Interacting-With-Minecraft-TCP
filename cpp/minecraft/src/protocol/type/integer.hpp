@@ -22,27 +22,48 @@
 #include <stdexcept>
 
 namespace minecraft::protocol::detail {
-    template<typename T, std::size_t N>
-    constexpr std::array<std::byte, N> intSerialize(T value) {
-        std::array<std::byte, N> result;
 
-        using UT  = std::make_unsigned_t<T>;
-        UT uvalue = static_cast<UT>(value);
+    template<typename T>
+    Integer<T>::Integer()
+        : value_(0) {}
 
-        if constexpr (std::endian::native == std::endian::big)  // 大端序
-            std::memcpy(result.data(), &value, N);
+    template<typename T>
+    Integer<T>::Integer(T value)
+        : value_(value) {}
 
-        else if constexpr (std::endian::native == std::endian::little) {
-            // 小端序
-            for (std::size_t i = 0; i < N; ++i) result[i] = static_cast<std::byte>(uvalue >> (CHAR_BIT * (N - 1 - i))) & std::byte{0xFF};
-        } else
-            throw std::runtime_error("Unsupported endianness");
-
-        return result;
+    template<typename T>
+    constexpr std::size_t Integer<T>::size() {
+        return size_;
     }
 
     template<typename T>
-    T intDeserialize(const std::byte *data) {
+    typename Integer<T>::type Integer<T>::value() const {
+        return value_;
+    }
+
+    template<typename T>
+    typename Integer<T>::serializeType Integer<T>::serialize() const {
+        if (!cached) {
+            using UT  = std::make_unsigned_t<T>;
+            UT uvalue = static_cast<UT>(value_);
+
+            if constexpr (std::endian::native == std::endian::big)  // 大端序
+                std::memcpy(data.data(), &value_, size_);
+
+            else if constexpr (std::endian::native == std::endian::little) {
+                // 小端序
+                for (std::size_t i = 0; i < size_; ++i) data[i] = static_cast<std::byte>(uvalue >> (CHAR_BIT * (size_ - 1 - i))) & std::byte{0xFF};
+            } else
+                throw std::runtime_error("Unsupported endianness");
+
+            cached = true;
+        }
+
+        return data;
+    }
+
+    template<typename T>
+    auto Integer<T>::deserialize(const std::byte *data) {
         constexpr auto size = sizeof(T);
 
         using UT  = std::make_unsigned_t<T>;
@@ -56,61 +77,19 @@ namespace minecraft::protocol::detail {
         else
             throw std::runtime_error("Unsupported endianness");
 
-        return result;
-    }
-
-    template<typename T>
-    Integer<T>::Integer()
-        : value(0) {}
-
-    template<typename T>
-    Integer<T>::Integer(T value)
-        : value(value) {}
-
-    template<typename T>
-    auto Integer<T>::serialize() const {
-        if (!cached) {
-            data   = intSerialize<T, size>(value);
-            cached = true;
-        }
-
-        return data;
-    }
-
-    template<typename T>
-    auto Integer<T>::deserialize(const std::byte *data) {
-        return Integer(intDeserialize<T>(data));
+        return Integer(result);
     }
 
     template<typename T>
     std::string Integer<T>::toString() const {
-        return std::to_string(value);
+        return std::to_string(value_);
     }
 
     template<typename T>
     std::string Integer<T>::toHexString() const {
-        return std::bitset<size * 8>(value).to_string();
+        return std::bitset<size_ * 8>(value_).to_string();
     }
 
-    template<typename T, T V>
-    constexpr auto Integer<T, V>::serialize() const {
-        return intSerialize<T, size>(V);
-    }
-
-    template<typename T, T V>
-    auto Integer<T, V>::deserialize(const std::byte *data) {
-        return Integer<T>::deserialize(data);
-    }
-
-    template<typename T, T V>
-    std::string Integer<T, V>::toString() {
-        return std::to_string(V);
-    }
-
-    template<typename T, T V>
-    std::string Integer<T, V>::toHexString() {
-        return std::bitset<size * 8>(V).to_string();
-    }
 }  // namespace minecraft::protocol::detail
 
 

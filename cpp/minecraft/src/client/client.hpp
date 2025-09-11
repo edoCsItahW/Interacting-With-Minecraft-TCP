@@ -24,13 +24,25 @@ namespace minecraft::client {
     inline Client::Client(std::string ip, const short port, const bool debug)
         : ClientBase(std::move(ip), port, debug) {}
 
-    inline void Client::handleRecv(std::vector<std::byte>& msg, const std::size_t size) const {
-        // auto packet = protocol::PackageImpl<>::deserialize(msg.data());
-        protocol::parsePacket(state, msg, []<protocol::isPackage T>(const T& packet) {
-            if constexpr (std::is_same_v<T, protocol::server_bound::login_step::CompressionPacketType<>>)
-                packet.onField("threshold", [&]<protocol::isField F>(const F& field){
-                    std::cout << field.toString() << std::endl;
-                });
+    // template<protocol::is_package T, typename F>
+    // void Client::onPackage(F&& handler) {
+    //
+    // }
+
+    template<protocol::is_package T>
+    void Client::emit(T&& package, std::optional<std::function<void()>> callback) {
+        auto packetBytes = package.serialize();
+
+        msgQueue.emplace(packetBytes, packetBytes.size(), callback);
+    }
+
+    inline void Client::handleRecv(std::vector<std::byte>& msg, const std::size_t size) {
+        protocol::parsePacket(state, msg, compress, [this]<protocol::is_package T>(const T& packet) {
+            if constexpr (std::is_same_v<T, protocol::server_bound::login_step::CompressionPacketType>) {
+                compress  = true;
+                threshold = packet.template get<"Threshold">().value();
+            }
+
             networkInfo<TO_CLIENT>(packet.toString());
         });
     }
@@ -58,19 +70,9 @@ namespace minecraft::client {
         using namespace protocol;
         using namespace client_bound;
 
-        const handshake_step::HandShakePacketType hsPacket{VarInt<765>(), String(ip), UShort(port), VarInt<2>()};
+        emit(handshake_step::HandShakePacketType{VarInt(765), String(ip), UShort(port), VarInt(2)});
 
-        auto hsPacketBytes = hsPacket.serialize();
-
-        msgQueue.emplace(hsPacketBytes, hsPacketBytes.size(), std::nullopt);
-
-        const login_step::LoginStartPacketType lsPacket{String<"edocsitahw">(), UUID<genUUID<"edocsitahw">()>()};
-
-        auto lsPacketBytes = lsPacket.serialize();
-
-        state = State::LOGIN;  // 进入登录状态
-
-        msgQueue.emplace(lsPacketBytes, lsPacketBytes.size(), std::nullopt);
+        emit(login_step::LoginStartPacketType{String("edocsitahw"), UUID(genUUID<"edocsitahw">())}, [this] { state = State::LOGIN; });
 
         ClientBase::start();
     }

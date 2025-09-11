@@ -22,20 +22,19 @@
 #include <array>
 
 namespace minecraft::protocol {
-    template<auto...>
-    struct Boolean;
 
-    template<>
-    struct Boolean<> {
+    struct Boolean {
     private:
         mutable std::array<std::byte, 1> data{};
+
+        static constexpr std::size_t size_ = 1;
+
+        bool value_;
 
     public:
         using type = bool;
 
-        static constexpr std::size_t size = 1;
-
-        bool value;
+        using serializeType = std::array<std::byte, 1>;
 
         Boolean();
 
@@ -49,7 +48,11 @@ namespace minecraft::protocol {
 
         Boolean& operator=(Boolean&& other) = default;
 
-        [[nodiscard]] auto serialize() const;
+        [[nodiscard]] static constexpr std::size_t size();
+
+        [[nodiscard]] type value() const;
+
+        [[nodiscard]] serializeType serialize() const;
 
         static auto deserialize(const std::byte* data);
 
@@ -58,49 +61,8 @@ namespace minecraft::protocol {
         [[nodiscard]] std::string toHexString() const;
     };
 
-    template<bool V>
-    struct Boolean<V> {
-        using type = bool;
-
-        static constexpr bool value = V;
-
-        static constexpr std::size_t size = 1;
-
-        Boolean() = default;
-
-        Boolean(const Boolean&) = default;
-
-        Boolean(Boolean&&) = default;
-
-        Boolean& operator=(const Boolean&) = default;
-
-        Boolean& operator=(Boolean&&) = default;
-
-        static constexpr auto serialize();
-
-        static auto deserialize(const std::byte* data);
-
-        static std::string toString();
-
-        static std::string toHexString();
-    };
-
-    using BooleanType = Boolean<>;
-
-    template<typename>
-    struct is_boolean_field : std::false_type {};
-
-    template<>
-    struct is_boolean_field<Boolean<>> : std::true_type {};
-
-    template<bool V>
-    struct is_boolean_field<Boolean<V>> : std::true_type {};
-
     template<typename T>
-    inline constexpr bool is_boolean_field_v = is_boolean_field<T>::value;
-
-    template<typename T>
-    concept boolean_field = is_boolean_field_v<T>;
+    concept is_boolean_field = std::is_same_v<T, Boolean>;
 
 }  // namespace minecraft::protocol
 

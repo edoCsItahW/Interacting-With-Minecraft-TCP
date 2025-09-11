@@ -20,43 +20,24 @@
 #include <array>
 
 namespace minecraft::protocol {
-    inline Boolean<>::Boolean()
-        : value(false) {}
+    inline Boolean::Boolean(const bool value)
+        : value_(value) {}
 
-    inline Boolean<>::Boolean(const bool value)
-        : value(value) {}
+    constexpr std::size_t Boolean::size() { return size_; }
 
-    inline auto Boolean<>::serialize() const {
-        if (data.empty()) data = std::array{value ? std::byte{1} : std::byte{0}};
+    inline Boolean::type Boolean::value() const { return value_; }
+
+    inline Boolean::serializeType Boolean::serialize() const {
+        if (data.empty()) data = std::array{value_ ? std::byte{1} : std::byte{0}};
 
         return data;
     }
 
-    inline auto Boolean<>::deserialize(const std::byte* data) { return Boolean{*reinterpret_cast<const bool*>(data)}; }
+    inline auto Boolean::deserialize(const std::byte* data) { return Boolean{*reinterpret_cast<const bool*>(data)}; }
 
-    inline std::string Boolean<>::toString() const { return value ? "true" : "false"; }
+    inline std::string Boolean::toString() const { return value_ ? "true" : "false"; }
 
-    inline std::string Boolean<>::toHexString() const { return value ? "0x01" : "0x00"; }
-
-    template<bool V>
-    constexpr auto Boolean<V>::serialize() {
-        return std::array{std::byte{V ? 1 : 0}};
-    }
-
-    template<bool V>
-    auto Boolean<V>::deserialize(const std::byte* data) {
-        return Boolean<>::deserialize(data);
-    }
-
-    template<bool V>
-    std::string Boolean<V>::toString() {
-        return V ? "true" : "false";
-    }
-
-    template<bool V>
-    std::string Boolean<V>::toHexString() {
-        return V ? "0x01" : "0x00";
-    }
+    inline std::string Boolean::toHexString() const { return value_ ? "0x01" : "0x00"; }
 
 }  // namespace minecraft::protocol
 

@@ -42,7 +42,7 @@ namespace minecraft {
             return std::equal(data.begin(), data.end(), other);
         }
 
-        constexpr bool equals(const T* other, std::size_t len) {
+        constexpr bool equals(const T* other, std::size_t len) const {
             if (len != size) return false;
 
             return std::equal(data.begin(), data.end(), other);

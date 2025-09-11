@@ -48,29 +48,33 @@ namespace minecraft::protocol {
         }
     }  // namespace detail
 
-    inline String<>::String()
-        : size(0) {}
+    inline String::String()
+        : size_(0) {}
 
-    inline String<>::String(const std::string &value)
-        : value(value)
-        , size(value.size() + detail::varNumSize(value.size())) {}
+    inline String::String(const std::string &value)
+        : size_(value.size() + detail::varNumSize(value.size()))
+        , value_(value) {}
 
-    inline auto String<>::serialize() const {
+    inline std::size_t String::size() const { return size_; }
+
+    inline String::type String::value() const { return value_; }
+
+    inline String::serializeType String::serialize() const {
         if (data.empty()) {
-            auto varInt    = detail::VarNum(static_cast<int>(value.size()));
+            auto varInt    = VarInt(static_cast<int>(value_.size()));
             auto sizeBytes = varInt.serialize();
 
-            data.reserve(sizeBytes.size() + value.size());
+            data.reserve(sizeBytes.size() + value_.size());
 
             data.insert(data.end(), sizeBytes.begin(), sizeBytes.end());
 
-            for (char c : value) data.push_back(static_cast<std::byte>(c));
+            for (char c : value_) data.push_back(static_cast<std::byte>(c));
         }
 
         return data;
     }
 
-    inline auto String<>::deserialize(const std::byte *data) {
+    inline auto String::deserialize(const std::byte *data) {
         auto [length, bytesRead] = detail::parseVarInt<int>(data);
 
         std::string result;
@@ -81,54 +85,14 @@ namespace minecraft::protocol {
             // if (auto c = static_cast<char>(ptr[i]); c == '\0')  // 保护设置
             //     break;
             // else
-                result.push_back(static_cast<char>(ptr[i]));
+            result.push_back(static_cast<char>(ptr[i]));
 
         return String(result);
     }
 
-    inline std::string String<>::toString() const {
-        return value;
-    }
+    inline std::string String::toString() const { return value_; }
 
-    inline std::string String<>::toHexString() const { return minecraft::toHexString(value); }
-
-    template<FStrByte V>
-    constexpr auto String<V>::serialize() {
-        constexpr std::size_t N = V.data.size();
-
-        constexpr auto varInt    = VarInt<static_cast<int>(N)>();
-        constexpr auto sizeBytes = varInt.serialize();
-
-        constexpr std::size_t size = sizeBytes.size() + N;
-        std::array<std::byte, size> result{};
-
-        std::copy(sizeBytes.begin(), sizeBytes.end(), result.begin());
-
-        std::copy(V.data.begin(), V.data.end(), result.begin() + sizeBytes.size());
-
-        return result;
-    }
-
-    template<FStrByte V>
-    auto String<V>::deserialize(const std::byte *data) {
-        return String<>::deserialize(data);
-    }
-
-    template<FStrByte V>
-    std::string String<V>::toString() {
-        std::string result;
-        result.reserve(V.data.size());
-
-        for (std::byte b : V.data) result.push_back(static_cast<char>(b));
-
-        return result;
-    }
-
-    template<FStrByte V>
-    std::string String<V>::toHexString() {
-        return minecraft::toHexString(toString());
-    }
-
+    inline std::string String::toHexString() const { return minecraft::toHexString(value_); }
 
 }  // namespace minecraft::protocol
 

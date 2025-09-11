@@ -137,6 +137,8 @@ namespace minecraft::client {
             if (!msgQueue.empty()) {
                 auto [msg, size, callback] = msgQueue.front();
 
+                msgQueue.pop();
+
                 auto buffer = castT2Char(msg, size);
 
                 if (send(sock, buffer, size, 0) == SOCKET_ERROR) raiseError("Send failed");
@@ -147,8 +149,6 @@ namespace minecraft::client {
                 for (std::size_t i = 0; i < size; i++) hexMsg += std::format("\\x{:02x} ", static_cast<unsigned char>(buffer[i]));
 
                 networkInfo<TO_SERVER>(hexMsg);
-
-                msgQueue.pop();
             }
 
             // 防止CPU占用过高，休眠100毫秒
@@ -157,7 +157,7 @@ namespace minecraft::client {
     }
 
     template<typename T>
-    void ClientBase<T>::handleRecv(T& msg, const size_t size) const {
+    void ClientBase<T>::handleRecv(T& msg, const size_t size) {
         networkInfo<TO_CLIENT>(castT2Char(msg, size));
     }
 

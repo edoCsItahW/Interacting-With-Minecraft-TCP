@@ -15,8 +15,8 @@
  * */
 
 #include "../minecraft/src/client/client.h"
-#include "../minecraft/src/protocol/package/PackageImpl.h"
 #include "../minecraft/src/protocol/package/definition.h"
+#include "../minecraft/src/protocol/package/package.h"
 #include "../minecraft/src/protocol/type/integer.h"
 #include "../minecraft/src/protocol/type/mcuuid.h"
 #include "../minecraft/src/protocol/type/str.h"
@@ -41,29 +41,17 @@ void varNum_test() {
     using namespace minecraft;
     // 运行期VarInt测试
 
-    auto rVarInt = protocol::VarInt(2);
+    auto rVarInt = protocol::VarInt(25565);
 
     auto rVarIntBytes = rVarInt.serialize();
 
     std::cout << "VarInt serialized bytes: " << std::endl;
     print_bytes(rVarIntBytes);
 
-    auto rVarIntDeserialized = protocol::VarInt<>::deserialize(rVarIntBytes.data());
+    auto rVarIntDeserialized = protocol::VarInt::deserialize(rVarIntBytes.data());
 
-    std::cout << "VarInt deserialized value: " << rVarIntDeserialized.value << std::endl << std::endl;
+    std::cout << "VarInt deserialized value: " << rVarIntDeserialized.value() << std::endl << std::endl;
 
-    // 编译期VarInt测试
-
-    constexpr auto cVarInt = protocol::VarInt<2>();
-
-    constexpr auto cVarIntBytes = cVarInt.serialize();
-
-    std::cout << "Compile-time VarInt serialized bytes: " << std::endl;
-    print_bytes(cVarIntBytes);
-
-    auto cVarIntDeserialized = protocol::VarInt<>::deserialize(cVarIntBytes.data());
-
-    std::cout << "Compile-time VarInt deserialized value: " << cVarIntDeserialized.value << std::endl << std::endl;
 }
 
 void integer_test() {
@@ -78,21 +66,8 @@ void integer_test() {
     std::cout << "Int serialized bytes: " << std::endl;
     print_bytes(rIntBytes);
 
-    auto rIntDeserialized = Int<>::deserialize(rIntBytes.data());
-    std::cout << "Int deserialized value: " << rIntDeserialized.value << std::endl << std::endl;
-
-    // 编译期Int测试
-
-    constexpr auto cInt = Int<25565>();
-
-    constexpr auto cIntBytes = cInt.serialize();
-
-    std::cout << "Compile-time Int serialized bytes: " << std::endl;
-    print_bytes(cIntBytes);
-
-    auto cIntDeserialized = Int<>::deserialize(cIntBytes.data());
-
-    std::cout << "Compile-time Int deserialized value: " << cIntDeserialized.value << std::endl << std::endl;
+    auto rIntDeserialized = Int::deserialize(rIntBytes.data());
+    std::cout << "Int deserialized value: " << rIntDeserialized.value() << std::endl << std::endl;
 
     // 运行期UShort测试
 
@@ -103,22 +78,10 @@ void integer_test() {
     std::cout << "UShort serialized bytes: " << std::endl;
     print_bytes(rUShortBytes);
 
-    auto rUShortDeserialized = UShort<>::deserialize(rUShortBytes.data());
+    auto rUShortDeserialized = UShort::deserialize(rUShortBytes.data());
 
-    std::cout << "UShort deserialized value: " << rUShortDeserialized.value << std::endl << std::endl;
+    std::cout << "UShort deserialized value: " << rUShortDeserialized.value() << std::endl << std::endl;
 
-    // 编译期UShort测试
-
-    constexpr auto cUShort = UShort<25565>();
-
-    constexpr auto cUShortBytes = cUShort.serialize();
-
-    std::cout << "Compile-time UShort serialized bytes: " << std::endl;
-    print_bytes(cUShortBytes);
-
-    auto cUShortDeserialized = UShort<>::deserialize(cUShortBytes.data());
-
-    std::cout << "Compile-time UShort deserialized value: " << cUShortDeserialized.value << std::endl << std::endl;
 }
 
 void str_test() {
@@ -132,22 +95,10 @@ void str_test() {
     std::cout << "String serialized bytes: " << std::endl;
     print_bytes(rStrBytes);
 
-    auto rStrDeserialized = String<>::deserialize(rStrBytes.data());
+    auto rStrDeserialized = String::deserialize(rStrBytes.data());
 
-    std::cout << "String deserialized value: " << rStrDeserialized.value << std::endl << std::endl;
+    std::cout << "String deserialized value: " << rStrDeserialized.value() << std::endl << std::endl;
 
-    // 编译期Str测试
-
-    constexpr auto cStr = String<"Hello, world!">();
-
-    constexpr auto cStrBytes = cStr.serialize();
-
-    std::cout << "Compile-time String serialized bytes: " << std::endl;
-    print_bytes(cStrBytes);
-
-    auto cStrDeserialized = String<>::deserialize(cStrBytes.data());
-
-    std::cout << "Compile-time String deserialized value: " << cStrDeserialized.value << std::endl << std::endl;
 }
 
 void mcuuid_test() {
@@ -160,34 +111,22 @@ void mcuuid_test() {
     std::cout << "MCUUID serialized bytes: " << std::endl;
     print_bytes(rMCUUIDBytes);
 
-    auto rMCUUIDDeserialized = protocol::UUID<>::deserialize(rMCUUIDBytes.data());
+    auto rMCUUIDDeserialized = protocol::UUID::deserialize(rMCUUIDBytes.data());
 
     std::cout << "MCUUID deserialized value: " << rMCUUIDDeserialized.toString() << std::endl << std::endl;
 
-    // 编译期MCUUID测试
-
-    constexpr auto cMCUUID = protocol::UUID<protocol::genUUID<"petter">()>();
-
-    constexpr auto cMCUUIDBytes = cMCUUID.serialize();
-
-    std::cout << "Compile-time MCUUID serialized bytes: " << std::endl;
-    print_bytes(cMCUUIDBytes);
-
-    auto cMCUUIDDeserialized = protocol::UUID<>::deserialize(cMCUUIDBytes.data());
-
-    std::cout << "Compile-time MCUUID deserialized value: " << cMCUUIDDeserialized.toString() << std::endl << std::endl;
 }
 
 void package_test() {
     using namespace minecraft;
-    protocol::client_bound::handshake_step::HandShakePacketType handShake{protocol::VarInt<765>(), protocol::String<"localhost">(), protocol::UShort<25565>(), protocol::VarInt<2>()};
+    protocol::client_bound::handshake_step::HandShakePacketType handShake{protocol::VarInt(765), protocol::String("localhost"), protocol::UShort(25565), protocol::VarInt(2)};
 
     auto handShakeBytes = handShake.serialize(false, -1);
 
     std::cout << "HandShake serialized bytes: " << std::endl;
     print_bytes(handShakeBytes);
 
-    auto handShakeDeserialized = protocol::client_bound::handshake_step::HandShakePacketType::deserialize<protocol::client_bound::handshake_step::HandShakeTypes>(handShakeBytes.data());
+    auto handShakeDeserialized = protocol::client_bound::handshake_step::HandShakePacketType::deserialize(handShakeBytes.data());
 
     std::cout << "HandShake deserialized value: " << handShakeDeserialized.toString() << std::endl;
 }
@@ -207,6 +146,10 @@ int main() {
     // varNum_test();
 
     // integer_test();
+
+    // str_test();
+
+    // mcuuid_test();
 
     // package_test();
 

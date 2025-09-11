@@ -34,34 +34,54 @@ namespace minecraft::protocol::detail {
         return size;
     }
 
-    template<intOrLong T, typename C>
-    constexpr C varNumSerialize(T value, void(func)(C &, std::size_t, std::byte)) {
-        C result{};
-        std::make_unsigned_t<T> uvalue = value;
+    template<intOrLong T>
+    VarNum<T>::VarNum()
+        : size_(0) {}
 
-        for (std::size_t i = 0; uvalue != 0; i++) {
-            auto byte = static_cast<std::byte>(uvalue & SEGMENT_BITS<int>);
+    template<intOrLong T>
+    VarNum<T>::VarNum(T value)
+        : size_(varNumSize(value))
+        , value_(value) {}
 
-            uvalue >>= 7;
-
-            if (uvalue != 0) byte |= CONTINUE_BIT<std::byte>;
-
-            func(result, i, byte);
-        }
-
-        return result;
+    template<intOrLong T>
+    std::size_t VarNum<T>::size() const {
+        return size_;
     }
 
     template<intOrLong T>
-    T varNumDeserialize(const std::byte *value) {
+    typename VarNum<T>::type VarNum<T>::value() const {
+        return value_;
+    }
+
+    template<intOrLong T>
+    typename VarNum<T>::serializeType VarNum<T>::serialize() const {
+        if (data.empty()) {
+            std::make_unsigned_t<T> uvalue = value_;
+
+            do {
+                auto byte = static_cast<std::byte>(uvalue & SEGMENT_BITS<int>);
+
+                uvalue >>= 7;
+
+                if (uvalue != 0) byte |= CONTINUE_BIT<std::byte>;
+
+                data.push_back(byte);
+            } while (uvalue != 0);
+        }
+
+        return data;
+    }
+
+    template<intOrLong T>
+    auto VarNum<T>::deserialize(const std::byte *data) {
         using UT  = std::make_unsigned_t<T>;
         UT result = 0;
         int shift = 0;
 
         for (std::size_t i = 0;; i++) {
-            result |= static_cast<UT>(value[i] & SEGMENT_BITS<std::byte>) << shift;
+            result |= static_cast<UT>(data[i] & SEGMENT_BITS<std::byte>) << shift;
 
-            if ((value[i] & CONTINUE_BIT<std::byte>) == static_cast<std::byte>(0)) return result;
+            if ((data[i] & CONTINUE_BIT<std::byte>) == static_cast<std::byte>(0)) return VarNum(result);
 
             shift += 7;
 
@@ -70,57 +90,12 @@ namespace minecraft::protocol::detail {
     }
 
     template<intOrLong T>
-    VarNum<T>::VarNum()
-        : value(0)
-        , size(0) {}
-
-    template<intOrLong T>
-    VarNum<T>::VarNum(T value)
-        : value(value)
-        , size(varNumSize(value)) {}
-
-    template<intOrLong T>
-    auto VarNum<T>::serialize() const {
-        using R = std::vector<std::byte>;
-
-        if (data.empty()) data = std::move(varNumSerialize<T, R>(value, [](R &result, std::size_t, std::byte byte) { result.push_back(byte); }));
-
-        return data;
-    }
-
-    template<intOrLong T>
-    auto VarNum<T>::deserialize(const std::byte *data) {
-        return VarNum(varNumDeserialize<T>(data));
-    }
-
-    template<intOrLong T>
     std::string VarNum<T>::toString() const {
-        return std::to_string(value);
+        return std::to_string(value_);
     }
 
     template<intOrLong T>
     std::string VarNum<T>::toHexString() const {
-        return minecraft::toHexString(serialize());
-    }
-
-    template<intOrLong T, T V>
-    constexpr auto VarNum<T, V>::serialize() {
-        using R = std::array<std::byte, varNumSize<T>(V)>;
-        return varNumSerialize<T, R>(V, [](R &result, std::size_t i, std::byte byte) { result[i] = byte; });
-    }
-
-    template<intOrLong T, T V>
-    auto VarNum<T, V>::deserialize(const std::byte *data) {
-        return VarNum<T>::deserialize(data);
-    }
-
-    template<intOrLong T, T V>
-    std::string VarNum<T, V>::toString() {
-        return std::to_string(V);
-    }
-
-    template<intOrLong T, T V>
-    std::string VarNum<T, V>::toHexString() {
         return minecraft::toHexString(serialize());
     }
 

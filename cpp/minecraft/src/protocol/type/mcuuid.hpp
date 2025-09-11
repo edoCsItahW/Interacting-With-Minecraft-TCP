@@ -40,7 +40,7 @@ namespace minecraft::protocol {
             return result;
         }
 
-        std::string uuidToString(const std::array<std::byte, 16>& uuidBytes) {
+        inline std::string uuidToString(const std::array<std::byte, 16>& uuidBytes) {
             std::stringstream ss;
 
             for (std::size_t i{0}; i < 16; i++) {
@@ -53,18 +53,19 @@ namespace minecraft::protocol {
         }
     }  // namespace detail
 
-    inline UUID<>::UUID()
-        : value() {}
+    inline UUID::UUID()
+        : value_{} {}
 
-    inline UUID<>::UUID(const std::array<std::byte, 16>& value)
-        : value(value) {}
+    inline UUID::UUID(const std::array<std::byte, 16>& value)
+        : value_(value) {}
 
-    inline UUID<>::UUID(const std::string& str)
-        : value(detail::javaUUID(str.c_str())) {}
+    constexpr std::size_t UUID::size() { return size_; }
 
-    inline auto UUID<>::serialize() const { return value; }
+    inline UUID::type UUID::value() const { return value_; }
 
-    inline auto UUID<>::deserialize(const std::byte* data) {
+    inline UUID::serializeType UUID::serialize() const { return value_; }
+
+    inline auto UUID::deserialize(const std::byte* data) {
         std::array<std::byte, 16> result{};
 
         for (std::size_t i{0}; i < 16; i++) result[i] = data[i];
@@ -72,53 +73,9 @@ namespace minecraft::protocol {
         return UUID(result);
     }
 
-    inline std::string UUID<>::toString() const {
-        return detail::uuidToString(value);
-    }
+    inline std::string UUID::toString() const { return detail::uuidToString(value_); }
 
-    inline std::string UUID<>::toHexString() const { return minecraft::toHexString(value); }
-
-    UUID(std::string) -> UUID<>;
-
-    template<std::array<std::byte, 16> V>
-    constexpr auto UUID<V>::serialize() {
-        return V;
-    }
-
-    template<std::array<std::byte, 16> V>
-    auto UUID<V>::deserialize(const std::byte* data) {
-        return UUID<>::deserialize(data);
-    }
-
-    template<std::array<std::byte, 16> V>
-    std::string UUID<V>::toString() {
-        return detail::uuidToString(V);
-    }
-
-    template<std::array<std::byte, 16> V>
-    std::string UUID<V>::toHexString() {
-        return minecraft::toHexString(V);
-    }
-
-    template<FStrChar V>
-    constexpr auto UUID<V>::serialize() {
-        return detail::javaUUID(V.data);
-    }
-
-    template<FStrChar V>
-    auto UUID<V>::deserialize(const std::byte* data) {
-        return UUID<>::deserialize(data);
-    }
-
-    template<FStrChar V>
-    std::string UUID<V>::toString() {
-        return detail::uuidToString(detail::javaUUID(V));
-    }
-
-    template<FStrChar V>
-    std::string UUID<V>::toHexString() {
-        return minecraft::toHexString(detail::javaUUID(V));
-    }
+    inline std::string UUID::toHexString() const { return minecraft::toHexString(value_); }
 
     template<typename T>
     auto genUUID(T str) {

@@ -6,51 +6,42 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file str.h
- * @author edocsitahw
+ * @file mcarray.h 
+ * @author edocsitahw 
  * @version 1.1
- * @date 2025/08/17 15:00
+ * @date 2025/09/11 18:15
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef STR_H
-#define STR_H
+#ifndef MCARRAY_H
+#define MCARRAY_H
 #pragma once
 
+#include "varNum.h"
 #include <string>
 #include <vector>
 
 namespace minecraft::protocol {
 
-    template<detail::intOrLong T>
-    static std::pair<T, int> parseVarInt(const std::byte *data);
+    template<typename T = std::byte>
+    struct Array {
+    private:
+        std::size_t size_;
 
-    struct String {
-    protected:
-        mutable std::vector<std::byte> data;
+        std::vector<T> value_;
 
         mutable bool cached = false;
 
-        std::size_t size_{0};
+        mutable std::vector<std::byte> data{};
 
-        std::string value_;
+        Array(const std::vector<T>& value);
 
     public:
-        using type = std::string;
+        using type = std::vector<T>;
 
         using serializeType = std::vector<std::byte>;
 
-        String() = default;
-
-        String(const std::string &value);
-
-        String(const String &other) = default;
-
-        String(String &&other) = default;
-
-        String &operator=(const String &other) = default;
-
-        String &operator=(String &&other) = default;
+        Array() = default;
 
         [[nodiscard]] std::size_t size() const;
 
@@ -58,18 +49,28 @@ namespace minecraft::protocol {
 
         [[nodiscard]] serializeType serialize() const;
 
-        static auto deserialize(const std::byte *data);
+        static auto deserialize(const std::byte* data, const VarInt& sizeField);
+
+        static auto deserialize(const std::byte* data, std::size_t size);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
     };
 
+    template<typename>
+    struct isArrayField : std::false_type {};
+
     template<typename T>
-    concept is_string_field = std::is_same_v<T, String>;
+    struct isArrayField<Array<T>> : std::true_type {};
 
-}  // namespace minecraft::protocol
+    template<typename T>
+    inline constexpr bool isArrayField_v = isArrayField<T>::value;
 
-#include "str.hpp"
+    template<typename T>
+    concept is_array_field = isArrayField_v<T>;
+}
 
-#endif  // STR_H
+#include "mcarray.hpp"
+
+#endif //MCARRAY_H

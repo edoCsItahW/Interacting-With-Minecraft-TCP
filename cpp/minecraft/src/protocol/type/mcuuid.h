@@ -38,9 +38,9 @@ namespace minecraft::protocol {
 
     public:
 
-        using type = std::array<std::byte, 16>;
+        using type = std::array<std::byte, size_>;
 
-        using serializeType = std::array<std::byte, 16>;
+        using serializeType = std::array<std::byte, size_>;
 
         UUID();
 

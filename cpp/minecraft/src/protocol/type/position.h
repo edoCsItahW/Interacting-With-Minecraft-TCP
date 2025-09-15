@@ -6,49 +6,48 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file boolean.h
- * @author edocsitahw
+ * @file position.h 
+ * @author edocsitahw 
  * @version 1.1
- * @date 2025/08/18 20:35
+ * @date 2025/09/13 17:06
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef BOOLEAN_H
-#define BOOLEAN_H
+#ifndef POSITION_H
+#define POSITION_H
 #pragma once
 
-#include <cstddef>
-#include <string>
 #include <array>
+#include <tuple>
+#include <string>
 
 namespace minecraft::protocol {
-
-    struct Boolean {
+    struct Position {
     private:
-        mutable std::array<std::byte, 1> data{};
+        static constexpr std::size_t size_ = 8;
 
-        static constexpr std::size_t size_ = 1;
+        std::tuple<int64_t, int64_t, int64_t> value_;
 
-        bool value_;
+        mutable bool cached = false;
+
+        mutable std::array<std::byte, size_> data{};
+
+        int64_t x_ = 0;
+        int64_t y_ = 0;
+        int64_t z_ = 0;
 
     public:
-        using type = bool;
+        using type = std::tuple<int64_t, int64_t, int64_t>;
 
         using serializeType = std::array<std::byte, size_>;
 
-        Boolean() = default;
+        Position() = default;
 
-        Boolean(bool value);
+        Position(int64_t x, int64_t y, int64_t z);
 
-        Boolean(const Boolean& other) = default;
+        Position(const type& value);
 
-        Boolean(Boolean&& other) = default;
-
-        Boolean& operator=(const Boolean& other) = default;
-
-        Boolean& operator=(Boolean&& other) = default;
-
-        [[nodiscard]] static constexpr std::size_t size();
+        [[nodiscard]] static std::size_t size();
 
         [[nodiscard]] type value() const;
 
@@ -62,10 +61,10 @@ namespace minecraft::protocol {
     };
 
     template<typename T>
-    concept is_boolean_field = std::is_same_v<T, Boolean>;
+    concept is_position_field = std::is_same_v<T, Position>;
 
-}  // namespace minecraft::protocol
+}
 
-#include "boolean.hpp"
+#include "position.hpp"
 
-#endif  // BOOLEAN_H
+#endif //POSITION_H

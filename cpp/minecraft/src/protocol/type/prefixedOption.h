@@ -6,51 +6,41 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file str.h
+ * @file prefixedOption.h
  * @author edocsitahw
  * @version 1.1
- * @date 2025/08/17 15:00
+ * @date 2025/09/14 14:46
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef STR_H
-#define STR_H
+#ifndef PREFIXEDOPTION_H
+#define PREFIXEDOPTION_H
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace minecraft::protocol {
-
-    template<detail::intOrLong T>
-    static std::pair<T, int> parseVarInt(const std::byte *data);
-
-    struct String {
-    protected:
-        mutable std::vector<std::byte> data;
+    template<typename T>
+    struct PrefixedOption {
+    private:
+        mutable std::vector<std::byte> data{};
 
         mutable bool cached = false;
 
-        std::size_t size_{0};
+        std::size_t size_ = 0;
 
-        std::string value_;
+        std::optional<T> value_;
 
     public:
-        using type = std::string;
+        using type = std::optional<T>;
 
         using serializeType = std::vector<std::byte>;
 
-        String() = default;
+        PrefixedOption() = default;
 
-        String(const std::string &value);
-
-        String(const String &other) = default;
-
-        String(String &&other) = default;
-
-        String &operator=(const String &other) = default;
-
-        String &operator=(String &&other) = default;
+        PrefixedOption(const std::optional<T>& value = std::nullopt);
 
         [[nodiscard]] std::size_t size() const;
 
@@ -58,18 +48,27 @@ namespace minecraft::protocol {
 
         [[nodiscard]] serializeType serialize() const;
 
-        static auto deserialize(const std::byte *data);
+        static auto deserialize(const std::byte* data);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
     };
 
+    template<typename>
+    struct isPrefixedOptionField : std::false_type {};
+
     template<typename T>
-    concept is_string_field = std::is_same_v<T, String>;
+    struct isPrefixedOptionField<PrefixedOption<T>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool isPrefixedOption_v = isPrefixedOptionField<T>::value;
+
+    template<typename T>
+    concept is_prefixed_option_field = isPrefixedOption_v<T>;
 
 }  // namespace minecraft::protocol
 
-#include "str.hpp"
+#include "prefixedOption.hpp"
 
-#endif  // STR_H
+#endif  // PREFIXEDOPTION_H

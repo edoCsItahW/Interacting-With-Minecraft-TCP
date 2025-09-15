@@ -18,28 +18,78 @@
 #pragma once
 
 #include "../../utils/fstr.h"
+#include "../../utils/nullable.h"
+#include "../type/angle.h"
 #include "../type/boolean.h"
+#include "../type/double.h"
+#include "../type/float.h"
+#include "../type/identifier.h"
 #include "../type/integer.h"
+#include "../type/mcOption.h"
 #include "../type/mcuuid.h"
+#include "../type/position.h"
+#include "../type/prefixedArray.h"
+#include "../type/prefixedOption.h"
 #include "../type/str.h"
 #include "../type/varNum.h"
+#include <optional>
 
 namespace minecraft::protocol {
 
-    template<typename T>
-    concept is_field = is_boolean_field<T> || is_integer_field<T> || is_uuid_field<T> || is_string_field<T> || is_var_num_field<T>;
+    namespace detail {
+        template<typename>
+        struct is_byte_array : std::false_type {};
 
-    template<FStrChar V, is_field T>
+        template<std::size_t N>
+        struct is_byte_array<std::array<std::byte, N>> : std::true_type {};
+
+        template<>
+        struct is_byte_array<std::vector<std::byte>> : std::true_type {};
+
+        template<typename T>
+        inline constexpr bool is_byte_array_v = is_byte_array<T>::value;
+
+        template<typename T>
+        concept is_builtin_field =
+            is_boolean_field<T> || is_integer_field<T> || is_uuid_field<T> || is_string_field<T> || is_var_num_field<T> || is_array_field<T> || is_float_field<T> || is_double_field<T>
+            || is_angle_field<T> || is_position_field<T> || is_prefixed_array_field<T> || is_identifier_field<T> || is_option_field<T> || is_prefixed_option_field<T>;
+
+        template<typename T>
+        concept is_custom_field = requires {
+            T::deserialize;
+
+            requires std::is_invocable_v<decltype(T::deserialize), const std::byte*>;
+
+            requires requires(T t) {
+                { t.serialize() };
+                requires detail::is_byte_array_v<std::remove_cvref_t<typename T::serializeType>>;
+            } || requires {
+                { T::serialize() };
+                requires detail::is_byte_array_v<std::remove_cvref_t<typename T::serializeType>>;
+            };
+        };
+
+
+        template<typename T>
+        concept is_nullable_fstr = is_nullable<T> && (is_fstr_char<typename T::type> || std::is_same_v<typename T::type, void>);
+
+    }  // namespace detail
+
+    template<typename T>
+    concept is_field = detail::is_builtin_field<T> || detail::is_custom_field<T>;
+
+    template<FStrChar V, is_field T, detail::is_nullable_fstr auto D = Null>
     struct FieldItem {
         static constexpr auto name = V;
         using type                 = T;
+        static constexpr auto dep  = D;
     };
 
     template<typename>
     struct isFieldItem : std::false_type {};
 
-    template<FStrChar V, is_field T>
-    struct isFieldItem<FieldItem<V, T>> : std::true_type {};
+    template<FStrChar V, is_field T, detail::is_nullable_fstr auto D>
+    struct isFieldItem<FieldItem<V, T, D>> : std::true_type {};
 
     template<typename T>
     inline constexpr bool is_field_item_v = isFieldItem<T>::value;
@@ -50,22 +100,61 @@ namespace minecraft::protocol {
     namespace detail {
         template<FStrChar V, std::size_t I, is_field_item T, is_field_item... Ts>
         struct IndexOfNameImpl {
-            static constexpr auto value = V == T::name ? I : IndexOfNameImpl<V, I + 1, Ts...>::value;
+            static constexpr int value = V == T::name ? I : IndexOfNameImpl<V, I + 1, Ts...>::value;
         };
 
         template<FStrChar V, std::size_t I, is_field_item T>
         struct IndexOfNameImpl<V, I, T> {
-            static constexpr auto value = V == T::name ? I : -1;
+            static constexpr int value = V == T::name ? I : -1;
         };
-    }
+
+    }  // namespace detail
 
     template<FStrChar V, is_field_item... Ts>
     struct indexOfName {
-        static constexpr auto value = sizeof...(Ts) == 0 ? -1 : detail::IndexOfNameImpl<V, 0, Ts...>::value;
+        static constexpr int value = sizeof...(Ts) == 0 ? -1 : detail::IndexOfNameImpl<V, 0, Ts...>::value;
     };
 
     template<FStrChar V, is_field_item... Ts>
     inline constexpr auto indexOfName_v = indexOfName<V, Ts...>::value;
+
+    namespace detail {
+
+        template<typename T, typename F>
+        constexpr decltype(auto) forEach(T&& tuple, F&& f);
+
+        template<is_field_item... Ts>
+        struct FieldMap {
+        private:
+            static constexpr auto keys = std::tuple{Ts::name...};
+
+            using TupleType = std::tuple<typename Ts::type...>;
+
+            TupleType* tuplePtr;
+
+        public:
+            FieldMap(TupleType& tuple);
+
+            template<FStrChar V>
+            auto get() const;
+
+            template<std::size_t I>
+            auto get() const;
+
+            template<typename F>
+            void on(std::string key, F&& f) const;
+
+            template<FStrChar V>
+            [[nodiscard]] constexpr bool has() const;
+
+            template<std::size_t N>
+            constexpr bool has(FStrChar<N> v) const;
+
+            template<typename F>
+            void forEach(F&& f);
+        };
+
+    }  // namespace detail
 
     // Fixed package
 
@@ -76,6 +165,8 @@ namespace minecraft::protocol {
 
         std::tuple<typename Ts::type...> fields_;
 
+        detail::FieldMap<Ts...> fieldMap_;
+
         std::vector<std::byte> compressSerializeImpl(int threshold) const;
 
         std::vector<std::byte> uncompressSerializeImpl() const;
@@ -85,6 +176,9 @@ namespace minecraft::protocol {
         static Package uncompressDeserializeImpl(const std::byte* data);
 
         Package(std::tuple<typename Ts::type...> fields);
+
+        template<std::size_t Idx>
+        using typeOf = std::tuple_element_t<Idx, std::tuple<typename Ts::type...>>;
 
     public:
         static constexpr int id = I;
@@ -97,6 +191,12 @@ namespace minecraft::protocol {
 
         template<typename F>
         void onField(std::string key, F&& f) const;
+
+        template<typename F>
+        void forEachField(F&& f);
+
+        template<typename F>
+        static void forEachType(F&& f);
 
         template<FStrChar V>
         auto get() const;
@@ -169,7 +269,7 @@ namespace std {
         using type = std::tuple_element_t<Idx, std::tuple<typename Ts::type...>>;
     };
 
-}
+}  // namespace std
 
 #include "package.hpp"
 

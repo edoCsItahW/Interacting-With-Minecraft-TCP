@@ -21,54 +21,163 @@
 #include <iostream>
 #include <sstream>
 
+/**
+ * @if zh
+ *
+ * @page 压缩与解压缩
+ *
+ * @section 压缩
+ *
+ * 是否压缩取决于服务器在登录阶段发送的ID为3的`SetCompression`包中@c threshold 的值，如果该值大于0，则表示启用压缩，否则表示不启用压缩。
+ *
+ * 压缩有两种情况：
+ *
+ * @subsection 1. 长度小于阈值
+ *
+ * 这种情况采用小数据包的压缩方式，格式为
+ *
+ * | 字段顺序 | 字段名称  | 字段类型  | 说明  |
+ * | :----- | :-----   | :-----   | :--- |
+ * | 1      | 数据包长度 | VarInt | 长度（数据长度 + 数据包ID + 数据）  |
+ * | 2      | 数据长度  | VarInt | 必须为0 |
+ * | 3      | 数据包ID | VarInt | 未压缩的数据包ID |
+ * | 4      | 数据     | Byte Array | 未压缩的数据 |
+ *
+ * > `数据长度`字段被设置为0，这是一个标志，表示@a 这个包虽然处于压缩模式，但没有压缩
+ *
+ * @subsection 2. 长度大于等于阈值
+ *
+ * 正在的使用zlib进行数据压缩，格式为
+ *
+ * | 字段顺序 | 字段名称  | 字段类型  | 说明  |
+ * | :----- | :-----   | :-----   | :--- |
+ * | 1      | 数据包长度 | VarInt | 长度（数据长度 + 压缩后的数据） |
+ * | 2      | 数据长度  | VarInt | 未压缩（数据包ID + 数据）的字节数 |
+ * | 3      | 数据包ID + 数据 | Byte Array | 这是一个整体，是经过 zlib 压缩后的（数据包 ID + 数据） |
+ *
+ * @else
+ *
+ * @endif
+ *
+ * */
+
+
 namespace minecraft::protocol {
 
+    namespace detail {
 
-    inline Package<> Package<>::compressDeserializeImpl(const std::byte* data) {
-        auto [packetLen, packetLenShift] = detail::parseVarInt<int>(data);
-        data += packetLenShift;
-
-        auto [dataLen, dataLenShift] = detail::parseVarInt<int>(data);
-        data += dataLenShift;
-
-        std::vector cData(data, data + packetLen - dataLenShift);
-
-        if (dataLen) {
-            std::vector<std::byte> uData = decompressData(cData, dataLen);
-
-            auto [id, idShift] = detail::parseVarInt<int>(uData.data());
-
-            const std::byte* ptr = uData.data() + idShift;
-
-            std::size_t resSize = uData.size() - idShift;
-
-            std::vector resData(ptr, ptr + resSize);
-
-            return {id, std::move(resData), resSize};
+        template<typename T, typename F>
+        constexpr decltype(auto) forEach(T&& tuple, F&& f) {
+            return [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                (f(std::get<Is>(tuple)), ...);
+                return std::forward<T>(tuple);
+            }(std::make_index_sequence<std::tuple_size_v<std::remove_reference_t<T>>>{});
         }
 
-        auto [id, idShift] = detail::parseVarInt<int>(cData.data());
+        template<is_field_item... Ts>
+        FieldMap<Ts...>::FieldMap(TupleType& tuple)
+            : tuplePtr(&tuple) {}
 
-        const std::byte* ptr = cData.data() + idShift;
+        template<is_field_item... Ts>
+        template<FStrChar V>
+        auto FieldMap<Ts...>::get() const {
+            constexpr auto idx = indexOfName_v<V, Ts...>;
 
-        std::size_t resSize = cData.size() - idShift;
+            static_assert(idx != -1, "Field not found");
 
-        std::vector resData(ptr, ptr + resSize);
+            using T = std::tuple_element_t<idx, std::tuple<Ts...>>;
 
-        return {id, std::move(resData), resSize};
+            return std::pair<typename T::type&, decltype(T::dep)>{std::get<idx>(*tuplePtr), T::dep};
+        }
+
+        template<is_field_item... Ts>
+        template<std::size_t I>
+        auto FieldMap<Ts...>::get() const {
+            static_assert(I < sizeof...(Ts), "Index out of range");
+
+            using T = std::tuple_element_t<I, std::tuple<Ts...>>;
+
+            return std::pair<typename T::type&, decltype(T::dep)>{std::get<I>(*tuplePtr), T::dep};
+        }
+
+        template<is_field_item... Ts>
+        template<typename F>
+        void FieldMap<Ts...>::on(const std::string key, F&& f) const {
+            [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+                bool found = false;
+
+                (..., [&] {
+                    if (found) return;
+
+                    using T = std::tuple_element_t<Is, std::tuple<Ts...>>;
+
+                    if (std::string_view(T::name.data.data(), T::name.size) == key) {
+                        f(std::get<Is>(*tuplePtr), T::dep);
+
+                        found = true;
+                    }
+                }());
+
+                if (!found) throw std::runtime_error("Field not found: " + key);
+            }(std::make_index_sequence<sizeof...(Ts)>{});
+        }
+
+        template<is_field_item... Ts>
+        template<FStrChar V>
+        constexpr bool FieldMap<Ts...>::has() const {
+            return indexOfName_v<V, Ts...> != -1;
+        }
+
+        template<is_field_item... Ts>
+        template<std::size_t N>
+        constexpr bool FieldMap<Ts...>::has(FStrChar<N> v) const {
+            return std::apply([&](const auto&... fs) { return !(... || (fs.name != v)); }, keys);
+        }
+
+        template<is_field_item... Ts>
+        template<typename F>
+        void FieldMap<Ts...>::forEach(F&& f) {
+            ([&, this]<is_field_item T>(T&&) { f.template operator()<T::name, typename T::type, T::dep>(*tuplePtr++); }(Ts{}), ...);
+        }
+
+    }  // namespace detail
+
+    inline Package<> Package<>::compressDeserializeImpl(const std::byte* data) {
+        // 解析数据包长度
+        auto [packetLen, packetLenShift] = parseVarInt<int>(data);
+        data += packetLenShift;
+
+        // 解析数据长度
+        auto [dataLen, dataLenShift] = parseVarInt<int>(data);
+        data += dataLenShift;
+        packetLen -= dataLenShift;
+
+        std::vector<std::byte> dataVec{data, data + packetLen};
+        if (dataLen)  // 判断是否启用压缩
+            dataVec = decompressData(dataVec, dataLen);
+
+        // 解析数据包ID
+        auto [id, idShift] = parseVarInt<int>(dataVec.data());
+
+        data         = dataVec.data() + idShift;
+        auto resSize = dataVec.size() - idShift;
+
+        std::vector resVec(data, data + resSize);
+
+        return {id, std::move(resVec), resSize};
     }
 
     inline Package<> Package<>::uncompressDeserializeImpl(const std::byte* data) {
-        auto [len, lenShift] = detail::parseVarInt<int>(data);
+        // 解析数据包长度
+        auto [len, lenShift] = parseVarInt<int>(data);
         data += lenShift;
 
-        auto [id, idShift] = detail::parseVarInt<int>(data);
+        // 解析数据包ID
+        auto [id, idShift] = parseVarInt<int>(data);
         data += idShift;
         len -= idShift;
 
-        std::vector result(data, data + len);
-
-        return {id, std::move(result), static_cast<std::size_t>(len)};
+        return {id, std::vector(data, data + len), static_cast<std::size_t>(len)};
     }
 
     inline Package<>::Package(const int id, std::vector<std::byte>&& data, const std::size_t size)
@@ -111,18 +220,23 @@ namespace minecraft::protocol {
         auto idBytes = VarInt(I).serialize();
         data.insert_range(data.end(), idBytes);
 
-        std::apply(
-            [&](const auto&... fs) {
-                (
-                    [&] {
-                        auto fieldBytes = fs.serialize();
-                        data.insert_range(data.end(), fieldBytes);
-                    }(),
-                    ...
-                );
-            },
-            fields_
-        );
+        // std::apply(
+        //     [&](const auto&... fs) {
+        //         (
+        //             [&] {
+        //                 auto fieldBytes = fs.serialize();
+        //                 data.insert_range(data.end(), fieldBytes);
+        //             }(),
+        //             ...
+        //         );
+        //     },
+        //     fields_
+        // );
+        detail::forEach(fields_, [&data](const auto& f) {
+            auto fieldBytes = f.serialize();
+
+            data.insert_range(data.end(), fieldBytes);
+        });
 
         std::vector<std::byte> cData;
         std::size_t cSize = 0;
@@ -155,18 +269,23 @@ namespace minecraft::protocol {
     std::vector<std::byte> Package<I, Ts...>::uncompressSerializeImpl() const {
         std::vector<std::byte> result = VarInt(I).serialize();
 
-        std::apply(
-            [&](const auto&... fs) {
-                (
-                    [&] {
-                        auto fieldBytes = fs.serialize();
-                        result.insert_range(result.end(), fieldBytes);
-                    }(),
-                    ...
-                );
-            },
-            fields_
-        );
+        // std::apply(
+        //     [&](const auto&... fs) {
+        //         (
+        //             [&] {
+        //                 auto fieldBytes = fs.serialize();
+        //                 result.insert_range(result.end(), fieldBytes);
+        //             }(),
+        //             ...
+        //         );
+        //     },
+        //     fields_
+        // );
+        detail::forEach(fields_, [&result](const auto& f) {
+            auto fieldBytes = f.serialize();
+
+            result.insert_range(result.end(), fieldBytes);
+        });
 
         const auto sizeBytes = VarInt(static_cast<int>(result.size())).serialize();
 
@@ -177,58 +296,140 @@ namespace minecraft::protocol {
 
     template<int I, is_field_item... Ts>
     Package<I, Ts...> Package<I, Ts...>::compressDeserializeImpl(const std::byte* data) {
-        auto [packetLen, packetLenShift] = detail::parseVarInt<int>(data);
+        // 解析数据包长度
+        auto [packetLen, packetLenShift] = parseVarInt<int>(data);
         data += packetLenShift;
 
-        auto [dataLen, dataLenShift] = detail::parseVarInt<int>(data);
+        // 解析数据长度
+        auto [dataLen, dataLenShift] = parseVarInt<int>(data);
         data += dataLenShift;
+        packetLen -= dataLenShift;
 
-        std::vector cData(data, data + packetLen - dataLenShift);
+        std::vector<std::byte> dataVec{data, data + packetLen};
+        if (dataLen)  // 判断是否启用压缩
+            dataVec = decompressData(dataVec, dataLen);
 
-        std::vector<std::byte> result;
-        if (dataLen == 0)
-            result = std::move(cData);
-        else
-            result = decompressData(cData, dataLen);
+        data = dataVec.data();
 
-        const std::byte* ptr = result.data();
-
-        auto [id, idShift] = detail::parseVarInt<int>(ptr);
-        ptr += idShift;
+        // 解析数据包ID
+        auto [id, idShift] = parseVarInt<int>(data);
+        data += idShift;
 
         if (id != I) throw std::runtime_error("PackageImpl ID mismatch after decompression.");
 
         std::tuple<typename Ts::type...> fields;
 
         std::size_t offset = 0;
+        int lastLen        = 0;
 
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-            ((std::get<Is>(fields) = std::tuple_element_t<Is, std::tuple<typename Ts::type...>>::deserialize(ptr + offset), offset += std::get<Is>(fields).size()), ...);
-        }(std::make_index_sequence<size>());
+        // 解析字段
+        // [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        //     (
+        //         [&] {
+        //             using FieldType = typeOf<Is>;
+        //
+        //             if constexpr (is_array_field<FieldType>)
+        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset, FieldType::category == ArrayType::FIXE ? lastLen : dataLen - offset);
+        //
+        //             else
+        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset);
+        //
+        //             offset += std::get<Is>(fields).size();
+        //
+        //             if constexpr (is_var_int_field<FieldType>) lastLen = std::get<Is>(fields).value();
+        //         }(),
+        //         ...
+        //     );
+        // }(std::make_index_sequence<size>());
+        forEachType([&]<FStrChar V, is_field T, detail::is_nullable_fstr auto D>() {
+            constexpr auto idx = indexOfName_v<V, Ts...>;
 
-        if (offset != result.size() - idShift)
-            std::cerr << "Warning: [Package::deserialize] Package data mismatch after decompression. Expected " << result.size() - idShift << " bytes, Actual: " << offset << " bytes."
-                      << std::endl;
+            if constexpr (D == Null) {
+                std::get<idx>(fields) = T::deserialize(data + offset);
+            }
+
+            else if constexpr (*D == "__rest__") {
+                std::get<idx>(fields) = T::deserialize(data + offset, dataLen - offset);
+            }
+
+            else {
+                constexpr auto depIdx = indexOfName_v<*D, Ts...>;
+
+                static_assert(depIdx != -1, "Dependency not found.");
+
+                auto dep = std::get<static_cast<std::size_t>(depIdx)>(fields);
+
+                std::get<idx>(fields) = T::deserialize(data + offset, dep);
+            }
+
+            offset += std::get<idx>(fields).size();
+        });
+
+        if (offset != dataVec.size() - idShift)
+            std::cerr << "Warning: [Package::deserialize] Package data mismatch after decompression. Expected " << dataVec.size() - idShift << " bytes, Actual: " << offset << " bytes." << std::endl;
 
         return Package(fields);
     }
 
     template<int I, is_field_item... Ts>
     Package<I, Ts...> Package<I, Ts...>::uncompressDeserializeImpl(const std::byte* data) {
-        auto [len, lenShift] = detail::parseVarInt<int>(data);
+        // 解析数据包长度
+        auto [len, lenShift] = parseVarInt<int>(data);
         data += lenShift;
 
-        auto [id, idShift] = detail::parseVarInt<int>(data);
+        // 解析数据包ID
+        auto [id, idShift] = parseVarInt<int>(data);
         data += idShift;
         len -= idShift;
 
         std::tuple<typename Ts::type...> fields;
 
         std::size_t offset = 0;
+        int lastLen        = 0;
 
-        [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-            ((std::get<Is>(fields) = std::tuple_element_t<Is, std::tuple<typename Ts::type...>>::deserialize(data + offset), offset += std::get<Is>(fields).size()), ...);
-        }(std::make_index_sequence<size>());
+        // 解析字段
+        // [&]<std::size_t... Is>(std::index_sequence<Is...>) {
+        //     (
+        //         [&] {
+        //             using FieldType = typeOf<Is>;
+        //
+        //             if constexpr (is_array_field<FieldType>)
+        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset, FieldType::category == ArrayType::FIXE ? lastLen : len - offset);
+        //
+        //             else
+        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset);
+        //
+        //             offset += std::get<Is>(fields).size();
+        //
+        //             if constexpr (is_var_int_field<FieldType>) lastLen = std::get<Is>(fields).value();
+        //         }(),
+        //         ...
+        //     );
+        // }(std::make_index_sequence<size>());
+
+        forEachType([&]<FStrChar V, is_field T, detail::is_nullable_fstr auto D>() {
+            constexpr auto idx = indexOfName_v<V, Ts...>;
+
+            if constexpr (D == Null) {
+                std::get<idx>(fields) = T::deserialize(data + offset);
+            }
+
+            else if constexpr (*D == "__rest__") {
+                std::get<idx>(fields) = T::deserialize(data + offset, len - offset);
+            }
+
+            else {
+                constexpr auto depIdx = indexOfName_v<*D, Ts...>;
+
+                static_assert(depIdx != -1, "Dependency not found.");
+
+                auto dep = std::get<static_cast<std::size_t>(depIdx)>(fields);
+
+                std::get<idx>(fields) = T::deserialize(data + offset, dep);
+            }
+
+            offset += std::get<idx>(fields).size();
+        });
 
         if (offset != len) std::cerr << "Warning: [Package::deserialize] Package data mismatch. Expected " << len << " bytes, Actual: " << offset << " bytes." << std::endl;
 
@@ -237,11 +438,13 @@ namespace minecraft::protocol {
 
     template<int I, is_field_item... Ts>
     Package<I, Ts...>::Package(std::tuple<typename Ts::type...> fields)
-        : fields_(std::move(fields)) {}
+        : fields_(std::move(fields))
+        , fieldMap_(fields_) {}
 
     template<int I, is_field_item... Ts>
     Package<I, Ts...>::Package(typename Ts::type&&... args)
-        : fields_{std::forward<typename Ts::type>(args)...} {}
+        : fields_{std::forward<typename Ts::type>(args)...}
+        , fieldMap_(fields_) {}
 
     template<int I, is_field_item... Ts>
     template<typename F>
@@ -249,6 +452,18 @@ namespace minecraft::protocol {
         [&]<std::size_t... Is>(std::index_sequence<Is...>) {
             (void)(... || (std::get<Is>(names).equals(key.data(), key.size()) ? (f(std::get<Is>(fields_)), true) : false));
         }(std::make_index_sequence<size>{});
+    }
+
+    template<int I, is_field_item... Ts>
+    template<typename F>
+    void Package<I, Ts...>::forEachField(F&& f) {
+        ([&, this]<is_field_item T>(T&&) { f.template operator()<T::name, typename T::type, T::dep>(std::get<indexOfName_v<T::name, Ts...>>(fields_)); }(Ts{}), ...);
+    }
+
+    template<int I, is_field_item... Ts>
+    template<typename F>
+    void Package<I, Ts...>::forEachType(F&& f) {
+        ([&]<is_field_item T>(T&&) { f.template operator()<T::name, typename T::type, T::dep>(); }(Ts{}), ...);
     }
 
     template<int I, is_field_item... Ts>
@@ -262,7 +477,7 @@ namespace minecraft::protocol {
     }
 
     template<int I, is_field_item... Ts>
-    auto Package<I, Ts...>::serialize(bool compressed, int threshold) const {
+    auto Package<I, Ts...>::serialize(const bool compressed, const int threshold) const {
         if (data_.empty()) data_ = compressed ? compressSerializeImpl(threshold) : uncompressSerializeImpl();
 
         return data_;

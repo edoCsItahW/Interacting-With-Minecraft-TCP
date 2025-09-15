@@ -6,51 +6,43 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file boolean.h
+ * @file double.h
  * @author edocsitahw
  * @version 1.1
- * @date 2025/08/18 20:35
+ * @date 2025/09/11 21:55
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef BOOLEAN_H
-#define BOOLEAN_H
+#ifndef DOUBLE_H
+#define DOUBLE_H
 #pragma once
 
-#include <cstddef>
-#include <string>
 #include <array>
+#include <string>
 
 namespace minecraft::protocol {
-
-    struct Boolean {
+    struct Double {
     private:
-        mutable std::array<std::byte, 1> data{};
+        mutable std::array<std::byte, 8> data{};
 
-        static constexpr std::size_t size_ = 1;
+        mutable bool cached = false;
 
-        bool value_;
+        static constexpr std::size_t size_ = 8;
+
+        double value_ = 0.0;
 
     public:
-        using type = bool;
+        using type = double;
 
         using serializeType = std::array<std::byte, size_>;
 
-        Boolean() = default;
+        [[nodiscard]] static constexpr std::size_t size() noexcept;
 
-        Boolean(bool value);
+        [[nodiscard]] type value() const noexcept;
 
-        Boolean(const Boolean& other) = default;
+        Double() = default;
 
-        Boolean(Boolean&& other) = default;
-
-        Boolean& operator=(const Boolean& other) = default;
-
-        Boolean& operator=(Boolean&& other) = default;
-
-        [[nodiscard]] static constexpr std::size_t size();
-
-        [[nodiscard]] type value() const;
+        Double(double value);
 
         [[nodiscard]] serializeType serialize() const;
 
@@ -62,10 +54,10 @@ namespace minecraft::protocol {
     };
 
     template<typename T>
-    concept is_boolean_field = std::is_same_v<T, Boolean>;
+    concept is_double_field = std::is_same_v<T, Double>;
 
 }  // namespace minecraft::protocol
 
-#include "boolean.hpp"
+#include "double.hpp"
 
-#endif  // BOOLEAN_H
+#endif  // DOUBLE_H

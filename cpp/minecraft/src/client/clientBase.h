@@ -57,7 +57,7 @@ namespace minecraft::client {
 
         std::queue<std::tuple<T, std::size_t, std::optional<std::function<void()>>>> msgQueue;
 
-        char recvBuf[1024];
+        char recvBuf[1024 * 100];
 
         std::atomic_bool stopFlag;
 

@@ -20,6 +20,8 @@
 #include "../protocol/package/definition.h"
 #include "../protocol/package/package.h"
 #include "clientBase.h"
+#include <typeindex>
+#include <any>
 
 namespace minecraft::client {
 
@@ -29,8 +31,17 @@ namespace minecraft::client {
 
         void start() override;
 
-        // template<protocol::is_package T, typename F>
-        // void onPackage(F&& handler);
+        template<protocol::is_package T>
+        void on(std::function<void(const T&)> callback, int times = -1);
+
+        template<protocol::State S, int I>
+        void on(std::function<void(const typename protocol::ServerPacketType<S, I>::type&)> callback, int times = -1);
+
+        template<protocol::is_package T>
+        void once(std::function<void(const T&)> callback);
+
+        template<protocol::State S, int I>
+        void once(std::function<void(const typename protocol::ServerPacketType<S, I>::type&)> callback);
 
         template<protocol::is_package T>
         void emit(T&& package, std::optional<std::function<void()>> callback = std::nullopt);
@@ -41,6 +52,8 @@ namespace minecraft::client {
         bool compress = false;
 
         int threshold = 0;
+
+        std::unordered_map<std::type_index, std::vector<std::pair<int, std::function<void(const std::any&)>>>> packageCallbacks;
 
         void handleRecv(std::vector<std::byte>& msg, std::size_t size) override;
 

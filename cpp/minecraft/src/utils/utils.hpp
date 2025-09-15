@@ -20,6 +20,7 @@
 #include <iomanip>
 #include <sstream>
 #include <zlib.h>
+#include <iostream>
 
 namespace minecraft {
 
@@ -127,27 +128,36 @@ namespace minecraft {
     }
 
     inline std::vector<std::byte> decompressData(const std::vector<std::byte>& data, std::size_t size) {
-        std::vector<std::byte> result{size};
+        try {
+            std::vector<std::byte> result{size};
 
-        z_stream stream;
-        stream.next_in   = (Bytef*)data.data();
-        stream.avail_in  = data.size();
-        stream.next_out  = reinterpret_cast<Bytef*>(result.data());
-        stream.avail_out = result.size();
+            z_stream stream;
+            stream.next_in   = (Bytef*)data.data();
+            stream.avail_in  = data.size();
+            stream.next_out  = reinterpret_cast<Bytef*>(result.data());
+            stream.avail_out = result.size();
 
-        stream.zalloc = Z_NULL;
-        stream.zfree  = Z_NULL;
-        stream.opaque = Z_NULL;
+            stream.zalloc = Z_NULL;
+            stream.zfree  = Z_NULL;
+            stream.opaque = Z_NULL;
 
-        int ret = inflateInit(&stream);
-        if (ret != Z_OK) throw std::runtime_error("inflateInit failed");
+            int ret = inflateInit2(&stream, -MAX_WBITS);
+            if (ret != Z_OK) throw std::runtime_error("inflateInit failed");
 
-        ret = inflate(&stream, Z_FINISH);
-        inflateEnd(&stream);
+            ret = inflate(&stream, Z_FINISH);
+            inflateEnd(&stream);
 
-        if (ret != Z_STREAM_END) throw std::runtime_error("inflate failed");
+            if (ret != Z_STREAM_END) {
+                std::ostringstream oss;
+                oss << "inflate failed with code " << ret << ", avail_in=" << stream.avail_in << ", avail_out=" << stream.avail_out;
+                throw std::runtime_error(oss.str());
+            }
 
-        return result;
+            return result;
+        } catch (const std::exception& e) {
+            std::cerr << "Error[size: " << size << "]: " << e.what() << std::endl;
+            return {};
+        }
     }
 
     inline std::vector<std::byte> compressData(const std::vector<std::byte>& data) {
@@ -166,7 +176,7 @@ namespace minecraft {
         stream.zfree  = Z_NULL;
         stream.opaque = Z_NULL;
 
-        int ret = deflateInit(&stream, Z_BEST_COMPRESSION);
+        int ret = deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED, -MAX_WBITS, 8, Z_DEFAULT_STRATEGY);
         if (ret != Z_OK) throw std::runtime_error("deflateInit failed");
 
         ret = deflate(&stream, Z_FINISH);

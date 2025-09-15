@@ -6,47 +6,47 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file boolean.h
+ * @file angle.h
  * @author edocsitahw
  * @version 1.1
- * @date 2025/08/18 20:35
+ * @date 2025/09/11 22:07
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef BOOLEAN_H
-#define BOOLEAN_H
+#ifndef ANGLE_H
+#define ANGLE_H
 #pragma once
 
-#include <cstddef>
-#include <string>
 #include <array>
+#include <cstdint>
+#include <string>
 
 namespace minecraft::protocol {
-
-    struct Boolean {
+    struct Angle {
     private:
-        mutable std::array<std::byte, 1> data{};
-
         static constexpr std::size_t size_ = 1;
 
-        bool value_;
+        static constexpr float DEGREES_PER_STEP = 360.0f / 256.0f;
+        static constexpr float STEPS_PER_DEGREE = 256.0f / 360.0f;
+
+        mutable std::array<uint8_t, size_> data{};
+
+        uint8_t value_ = 0;
+
+        template<typename T>
+        uint8_t normalize(T degrees);
+
+        mutable bool cached = false;
 
     public:
-        using type = bool;
+        using type = uint8_t;
 
-        using serializeType = std::array<std::byte, size_>;
+        using serializeType = std::array<uint8_t, size_>;
 
-        Boolean() = default;
+        Angle() = default;
 
-        Boolean(bool value);
-
-        Boolean(const Boolean& other) = default;
-
-        Boolean(Boolean&& other) = default;
-
-        Boolean& operator=(const Boolean& other) = default;
-
-        Boolean& operator=(Boolean&& other) = default;
+        template<typename T>
+        Angle(T value);
 
         [[nodiscard]] static constexpr std::size_t size();
 
@@ -59,13 +59,17 @@ namespace minecraft::protocol {
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
+
+        float toDegrees() const;
+
+        float toRadians() const;
     };
 
     template<typename T>
-    concept is_boolean_field = std::is_same_v<T, Boolean>;
+    concept is_angle_field = std::is_same_v<T, Angle>;
 
 }  // namespace minecraft::protocol
 
-#include "boolean.hpp"
+#include "angle.hpp"
 
-#endif  // BOOLEAN_H
+#endif  // ANGLE_H

@@ -6,51 +6,41 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file str.h
- * @author edocsitahw
+ * @file prefixedArray.h 
+ * @author edocsitahw 
  * @version 1.1
- * @date 2025/08/17 15:00
+ * @date 2025/09/13 23:33
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef STR_H
-#define STR_H
+#ifndef PREFIXEDARRAY_H
+#define PREFIXEDARRAY_H
 #pragma once
 
-#include <string>
 #include <vector>
+#include <string>
 
 namespace minecraft::protocol {
 
-    template<detail::intOrLong T>
-    static std::pair<T, int> parseVarInt(const std::byte *data);
+    template<typename T>
+    struct PrefixedArray {
+    private:
+        std::vector<T> value_;
 
-    struct String {
-    protected:
-        mutable std::vector<std::byte> data;
+        mutable std::vector<std::byte> data{};
 
         mutable bool cached = false;
 
-        std::size_t size_{0};
-
-        std::string value_;
+        std::size_t size_;
 
     public:
-        using type = std::string;
+        using type = std::vector<T>;
 
         using serializeType = std::vector<std::byte>;
 
-        String() = default;
+        PrefixedArray() = default;
 
-        String(const std::string &value);
-
-        String(const String &other) = default;
-
-        String(String &&other) = default;
-
-        String &operator=(const String &other) = default;
-
-        String &operator=(String &&other) = default;
+        PrefixedArray(type value);
 
         [[nodiscard]] std::size_t size() const;
 
@@ -58,18 +48,27 @@ namespace minecraft::protocol {
 
         [[nodiscard]] serializeType serialize() const;
 
-        static auto deserialize(const std::byte *data);
+        static auto deserialize(const std::byte* data);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
     };
 
+    template<typename>
+    struct isPrefixedArrayField : std::false_type {};
+
     template<typename T>
-    concept is_string_field = std::is_same_v<T, String>;
+    struct isPrefixedArrayField<PrefixedArray<T>> : std::true_type {};
 
-}  // namespace minecraft::protocol
+    template<typename T>
+    inline constexpr bool isPrefixedArrayField_v = isPrefixedArrayField<T>::value;
 
-#include "str.hpp"
+    template<typename T>
+    concept is_prefixed_array_field = isPrefixedArrayField_v<T>;
 
-#endif  // STR_H
+}
+
+#include "prefixedArray.hpp"
+
+#endif //PREFIXEDARRAY_H

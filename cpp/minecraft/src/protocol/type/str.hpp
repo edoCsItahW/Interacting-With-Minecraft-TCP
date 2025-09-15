@@ -22,34 +22,28 @@
 #include <stdexcept>
 
 namespace minecraft::protocol {
-    namespace detail {
-        template<intOrLong T>
-        static std::pair<T, int> parseVarInt(const std::byte *data) {
-            T value       = 0;
-            int shift     = 0;
-            int bytesRead = 0;
+    template<detail::intOrLong T>
+    static std::pair<T, int> parseVarInt(const std::byte *data) {
+        T value       = 0;
+        int shift     = 0;
+        int bytesRead = 0;
 
-            while (true) {
-                if (bytesRead >= 5) throw std::runtime_error("VarInt is too long");
+        while (true) {
+            if (bytesRead >= 5) throw std::runtime_error("VarInt is too long");
 
-                std::byte b = *data++;
+            std::byte b = *data++;
 
-                value |= static_cast<T>(b & SEGMENT_BITS<std::byte>) << shift;
-                bytesRead++;
+            value |= static_cast<T>(b & detail::SEGMENT_BITS<std::byte>) << shift;
+            bytesRead++;
 
-                if ((b & CONTINUE_BIT<std::byte>) == std::byte{0}) break;
+            if ((b & detail::CONTINUE_BIT<std::byte>) == std::byte{0}) break;
+            shift += 7;
 
-                shift += 7;
-
-                if (shift >= sizeof(T) * 8) throw std::runtime_error("VarInt is too long");
-            }
-
-            return {value, bytesRead};
+            if (shift >= sizeof(T) * 8) throw std::runtime_error("VarInt is too long");
         }
-    }  // namespace detail
 
-    inline String::String()
-        : size_(0) {}
+        return {value, bytesRead};
+    }
 
     inline String::String(const std::string &value)
         : size_(value.size() + detail::varNumSize(value.size()))
@@ -60,7 +54,7 @@ namespace minecraft::protocol {
     inline String::type String::value() const { return value_; }
 
     inline String::serializeType String::serialize() const {
-        if (data.empty()) {
+        if (!cached) {
             auto varInt    = VarInt(static_cast<int>(value_.size()));
             auto sizeBytes = varInt.serialize();
 
@@ -69,13 +63,15 @@ namespace minecraft::protocol {
             data.insert(data.end(), sizeBytes.begin(), sizeBytes.end());
 
             for (char c : value_) data.push_back(static_cast<std::byte>(c));
+
+            cached = true;
         }
 
         return data;
     }
 
     inline auto String::deserialize(const std::byte *data) {
-        auto [length, bytesRead] = detail::parseVarInt<int>(data);
+        auto [length, bytesRead] = parseVarInt<int>(data);
 
         std::string result;
         result.reserve(length);

@@ -26,27 +26,17 @@ namespace minecraft {
 
         static constexpr std::size_t size = N - 1;
 
-        constexpr FStr(const char (&value)[N]) {
-            for (std::size_t i = 0; i < N - 1; ++i) data[i] = static_cast<T>(value[i]);
-        }
-
-        constexpr bool operator==(const FStr& other) const {
-            return size != other.size ? false : data == other.data;  // c++20
-        }
+        constexpr FStr(const char (&value)[N]);
 
         template<std::size_t M>
-        constexpr bool operator==(const T (&other)[M]) const {
-            if constexpr ((std::is_same_v<T, char> && M != size + 1) || M != size)
-                return false;
+        constexpr bool operator==(const FStr<T, M>& other) const;
 
-            return std::equal(data.begin(), data.end(), other);
-        }
+        constexpr bool operator==(const FStr& other) const;
 
-        constexpr bool equals(const T* other, std::size_t len) const {
-            if (len != size) return false;
+        template<std::size_t M>
+        constexpr bool operator==(const T (&other)[M]) const;
 
-            return std::equal(data.begin(), data.end(), other);
-        }
+        constexpr bool equals(const T* other, std::size_t len) const;
     };
 
     template<std::size_t N>
@@ -55,16 +45,50 @@ namespace minecraft {
     template<std::size_t N>
     using FStrByte = FStr<std::byte, N>;
 
+    template<typename>
+    struct isFStr : std::false_type {};
+
+    template<typename T, std::size_t N>
+    struct isFStr<FStr<T, N>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool isFStr_v = isFStr<T>::value;
+
+    template<typename T>
+    concept is_fstr = isFStr_v<T>;
+
+    template<typename>
+    struct isFStrChar : std::false_type {};
+
+    template<std::size_t N>
+    struct isFStrChar<FStrChar<N>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool isFStrChar_v = isFStrChar<T>::value;
+
+    template<typename T>
+    concept is_fstr_char = isFStrChar_v<T>;
+
+    template<typename>
+    struct isFStrByte : std::false_type {};
+
+    template<std::size_t N>
+    struct isFStrByte<FStrByte<N>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool isFStrByte_v = isFStrByte<T>::value;
+
+    template<typename T>
+    concept is_fstr_byte = isFStrByte_v<T>;
+
     template<FStrChar V>
-    constexpr auto operator""_s() {
-        return V;
-    }
+    constexpr auto operator""_s();
 
     template<FStrByte V>
-    constexpr auto operator""_b() {
-        return V;
-    }
+    constexpr auto operator""_b();
 
 }  // namespace minecraft
+
+#include "fstr.hpp"
 
 #endif  // FSTR_H

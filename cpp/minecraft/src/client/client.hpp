@@ -19,31 +19,76 @@
 
 #include "../protocol/package/definition.h"
 #include "logging.h"
+#include <any>
 
 namespace minecraft::client {
     inline Client::Client(std::string ip, const short port, const bool debug)
-        : ClientBase(std::move(ip), port, debug) {}
+        : ClientBase(std::move(ip), port, debug) {
+        using namespace protocol;
 
-    // template<protocol::is_package T, typename F>
-    // void Client::onPackage(F&& handler) {
-    //
-    // }
+        on<server_bound::login_step::CompressionPacketType>([this](const auto& packet) {
+            if (auto t = packet.template get<"Threshold">().value(); t >= 0) {
+                compress  = true;
+                threshold = t;
+            }
+        });
+
+        on<server_bound::login_step::LoginSuccessPacketType>([this](const auto&) {
+            state = State::PLAY;
+
+            emit(client_bound::login_step::LoginConfirmPacketType{});
+        });
+
+        on<server_bound::play_step::SpawnEntityPacketType>([this](const auto& packet) {
+            emit(Package<2>{});
+        });
+
+        on<server_bound::play_step::KeepAlivePacketType>([this](const auto& packet) { emit(client_bound::play_step::KeepAlivePacketType{Long(packet.template get<"KeepAliveID">().value())}); });
+    }
+
+    template<protocol::is_package T>
+    void Client::on(std::function<void(const T&)> callback, int times) {
+        auto& vec = packageCallbacks[typeid(T)];
+
+        vec.push_back(std::make_pair(times, [callback](const std::any& packet) { callback(std::any_cast<const T&>(packet)); }));
+    }
+
+    template<protocol::State S, int I>
+    void Client::on(std::function<void(const typename protocol::ServerPacketType<S, I>::type&)> callback, const int times) {
+        using T = typename protocol::ServerPacketType<S, I>::type;
+
+        on<T>(callback, times);
+    }
+
+    template<protocol::is_package T>
+    void Client::once(std::function<void(const T&)> callback) {
+        on<T>(callback, 1);
+    }
+
+    template<protocol::State S, int I>
+    void Client::once(std::function<void(const typename protocol::ServerPacketType<S, I>::type&)> callback) {
+        on<S, I>(callback, 1);
+    }
 
     template<protocol::is_package T>
     void Client::emit(T&& package, std::optional<std::function<void()>> callback) {
-        auto packetBytes = package.serialize();
+        auto packetBytes = package.serialize(compress, threshold);
 
         msgQueue.emplace(packetBytes, packetBytes.size(), callback);
     }
 
     inline void Client::handleRecv(std::vector<std::byte>& msg, const std::size_t size) {
-        protocol::parsePacket(state, msg, compress, [this]<protocol::is_package T>(const T& packet) {
-            if constexpr (std::is_same_v<T, protocol::server_bound::login_step::CompressionPacketType>) {
-                compress  = true;
-                threshold = packet.template get<"Threshold">().value();
-            }
+        using namespace protocol;
 
-            networkInfo<TO_CLIENT>(packet.toString());
+        parsePacket(state, msg, compress, [this]<is_package T>(const T& packet) {
+            if (const auto it = packageCallbacks.find(typeid(T)); it != packageCallbacks.end())
+                for (auto& [times, callback] : it->second) {
+                    if (times != 0) callback(std::any(packet));
+
+                    if (times > 0) --times;
+                }
+
+            networkInfo<TO_CLIENT>(std::format("[{}] {}", enumToStr(state), packet.toString()));
         });
     }
 

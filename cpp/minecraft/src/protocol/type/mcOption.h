@@ -6,51 +6,42 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file str.h
+ * @file mcOption.h
  * @author edocsitahw
  * @version 1.1
- * @date 2025/08/17 15:00
+ * @date 2025/09/14 11:40
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef STR_H
-#define STR_H
+#ifndef MCOPTION_H
+#define MCOPTION_H
 #pragma once
 
+#include <optional>
 #include <string>
 #include <vector>
 
 namespace minecraft::protocol {
 
-    template<detail::intOrLong T>
-    static std::pair<T, int> parseVarInt(const std::byte *data);
-
-    struct String {
-    protected:
-        mutable std::vector<std::byte> data;
+    template<typename T>
+    struct Option {
+    private:
+        mutable std::vector<std::byte> data{};
 
         mutable bool cached = false;
 
-        std::size_t size_{0};
+        std::size_t size_ = 0;
 
-        std::string value_;
+        std::optional<T> value_;
 
     public:
-        using type = std::string;
+        using type = std::optional<T>;
 
         using serializeType = std::vector<std::byte>;
 
-        String() = default;
+        Option() = default;
 
-        String(const std::string &value);
-
-        String(const String &other) = default;
-
-        String(String &&other) = default;
-
-        String &operator=(const String &other) = default;
-
-        String &operator=(String &&other) = default;
+        Option(const std::optional<T>& value = std::nullopt);
 
         [[nodiscard]] std::size_t size() const;
 
@@ -58,18 +49,27 @@ namespace minecraft::protocol {
 
         [[nodiscard]] serializeType serialize() const;
 
-        static auto deserialize(const std::byte *data);
+        static auto deserialize(const std::byte* data, const Boolean& boolField);
 
         [[nodiscard]] std::string toString() const;
 
         [[nodiscard]] std::string toHexString() const;
     };
 
+    template<typename>
+    struct isOptionField : std::false_type {};
+
     template<typename T>
-    concept is_string_field = std::is_same_v<T, String>;
+    struct isOptionField<Option<T>> : std::true_type {};
+
+    template<typename T>
+    inline constexpr bool isOptionField_v = isOptionField<T>::value;
+
+    template<typename T>
+    concept is_option_field = isOptionField_v<T>;
 
 }  // namespace minecraft::protocol
 
-#include "str.hpp"
+#include "mcOption.hpp"
 
-#endif  // STR_H
+#endif  // MCOPTION_H

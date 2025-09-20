@@ -18,13 +18,14 @@
 #pragma once
 
 namespace minecraft::protocol {
+
+    inline Identifier::Identifier()
+        : String() {}
+
     inline Identifier::Identifier(const std::string& str)
         : String(str) {}
 
-    inline auto Identifier::deserialize(const std::byte* data) {
-        return Identifier(String::deserialize(data).value());
-    }
-
+    inline auto Identifier::deserialize(const std::byte* data) { return Identifier(String::deserialize(data).value()); }
 
 }  // namespace minecraft::protocol
 

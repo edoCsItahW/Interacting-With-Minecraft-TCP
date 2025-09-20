@@ -21,6 +21,11 @@
 namespace minecraft::protocol {
 
     template<typename T>
+    Option<T>::Option()
+        : size_(0)
+        , value_(std::nullopt) {}
+
+    template<typename T>
     Option<T>::Option(const std::optional<T>& value)
         : value_(value) {
         if ((size_ = value.has_value())) {
@@ -61,9 +66,9 @@ namespace minecraft::protocol {
 
     template<typename T>
     auto Option<T>::deserialize(const std::byte* data, const Boolean& boolField) {
-        if (auto hasValue = boolField.value()) {
-            if constexpr (requires { T::deserialize(data, hasValue); })
-                return Option{T::deserialize(data, hasValue)};
+        if (boolField.value()) {
+            if constexpr (requires { T::deserialize(data); })
+                return Option{T::deserialize(data)};
 
             else
                 return Option{static_cast<T>(*data)};
@@ -75,11 +80,14 @@ namespace minecraft::protocol {
     template<typename T>
     std::string Option<T>::toString() const {
         if (value_.has_value()) {
-            if constexpr (requires { T::toString(); })
+            if constexpr (requires (T t) { t.toString(); })
                 return value_.value().toString();
 
+            else if constexpr (requires { std::to_string(*value_); })
+                return std::to_string(value_.value());
+
             else
-                return std::to_string(*value_);
+                return std::to_string(static_cast<std::byte>(*value_));
         }
 
         return "null";

@@ -22,13 +22,21 @@
 
 namespace minecraft::protocol {
 
+    inline Position::Position()
+        : x_(0)
+        , y_(0)
+        , z_(0) {}
+
     inline Position::Position(const int64_t x, const int64_t y, const int64_t z)
         : x_(x)
         , y_(y)
         , z_(z) {}
 
     inline Position::Position(const type& value)
-        : value_(value) {}
+        : value_(value)
+        , x_(0)
+        , y_(0)
+        , z_(0) {}
 
     inline std::size_t Position::size() { return size_; }
 

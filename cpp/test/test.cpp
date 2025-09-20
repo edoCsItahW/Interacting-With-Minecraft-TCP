@@ -25,14 +25,13 @@
 #include <iostream>
 #include <sstream>
 
-
 template<typename T>
 auto print_bytes(const T& containter) {
     std::stringstream ss;
 
     ss << std::hex << std::setfill('0');
 
-    for (auto byte : containter) ss << "\\x" << std::setw(2) << static_cast<int>(byte) << " ";
+    for (auto byte : containter) ss << "\\0x" << std::setw(2) << static_cast<int>(byte) << " ";
 
     std::cout << ss.str() << std::endl;
 }
@@ -51,7 +50,6 @@ void varNum_test() {
     auto rVarIntDeserialized = protocol::VarInt::deserialize(rVarIntBytes.data());
 
     std::cout << "VarInt deserialized value: " << rVarIntDeserialized.value() << std::endl << std::endl;
-
 }
 
 void integer_test() {
@@ -81,7 +79,6 @@ void integer_test() {
     auto rUShortDeserialized = UShort::deserialize(rUShortBytes.data());
 
     std::cout << "UShort deserialized value: " << rUShortDeserialized.value() << std::endl << std::endl;
-
 }
 
 void str_test() {
@@ -98,7 +95,6 @@ void str_test() {
     auto rStrDeserialized = String::deserialize(rStrBytes.data());
 
     std::cout << "String deserialized value: " << rStrDeserialized.value() << std::endl << std::endl;
-
 }
 
 void mcuuid_test() {
@@ -114,7 +110,6 @@ void mcuuid_test() {
     auto rMCUUIDDeserialized = protocol::UUID::deserialize(rMCUUIDBytes.data());
 
     std::cout << "MCUUID deserialized value: " << rMCUUIDDeserialized.toString() << std::endl << std::endl;
-
 }
 
 void package_test() {
@@ -138,7 +133,6 @@ void client_test() {
 
     client.start();
 }
-
 
 int main() {
     client_test();

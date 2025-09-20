@@ -22,7 +22,11 @@
 namespace minecraft::protocol {
 
     struct Identifier : String {
-        Identifier() = default;
+        using type = std::string;
+
+        using serializeType = std::vector<std::byte>;
+
+        Identifier();
 
         Identifier(const std::string& str);
 

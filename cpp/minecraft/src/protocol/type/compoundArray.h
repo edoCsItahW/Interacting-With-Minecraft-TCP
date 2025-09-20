@@ -6,41 +6,44 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file prefixedArray.h 
- * @author edocsitahw 
+ * @file compoundArray.h
+ * @author edocsitahw
  * @version 1.1
- * @date 2025/09/13 23:33
+ * @date 2025/09/16 21:33
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef PREFIXEDARRAY_H
-#define PREFIXEDARRAY_H
+#ifndef COMPOUNDARRAY_H
+#define COMPOUNDARRAY_H
 #pragma once
 
-#include <vector>
 #include <string>
+#include <tuple>
+#include <vector>
 
 namespace minecraft::protocol {
 
-    template<typename T = std::byte>
-    struct PrefixedArray {
+    template<typename... Ts>
+    struct CompoundArray {
     private:
-        std::vector<T> value_;
+        std::size_t size_ = 0;
 
-        mutable std::vector<std::byte> data{};
+        std::tuple<Ts...> value_;
 
         mutable bool cached = false;
 
-        std::size_t size_;
+        mutable std::vector<std::byte> data{};
+
+        CompoundArray(std::tuple<Ts...>&& value);
 
     public:
-        using type = std::vector<T>;
+        using type = std::tuple<Ts...>;
 
         using serializeType = std::vector<std::byte>;
 
-        PrefixedArray();
+        CompoundArray() = default;
 
-        PrefixedArray(type value);
+        CompoundArray(Ts&&... args);
 
         [[nodiscard]] std::size_t size() const;
 
@@ -56,19 +59,19 @@ namespace minecraft::protocol {
     };
 
     template<typename>
-    struct isPrefixedArrayField : std::false_type {};
+    struct isCompoundArrayField : std::false_type {};
+
+    template<typename... Ts>
+    struct isCompoundArrayField<CompoundArray<Ts...>> : std::true_type {};
 
     template<typename T>
-    struct isPrefixedArrayField<PrefixedArray<T>> : std::true_type {};
+    inline constexpr bool isCompoundArray_v = isCompoundArrayField<T>::value;
 
     template<typename T>
-    inline constexpr bool isPrefixedArrayField_v = isPrefixedArrayField<T>::value;
+    concept is_compound_array_field = isCompoundArray_v<T>;
 
-    template<typename T>
-    concept is_prefixed_array_field = isPrefixedArrayField_v<T>;
+}  // namespace minecraft::protocol
 
-}
+#include "compoundArray.hpp"
 
-#include "prefixedArray.hpp"
-
-#endif //PREFIXEDARRAY_H
+#endif  // COMPOUNDARRAY_H

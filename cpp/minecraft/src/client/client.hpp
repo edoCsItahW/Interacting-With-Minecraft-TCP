@@ -21,29 +21,36 @@
 #include "logging.h"
 #include <any>
 
+#ifdef DEBUG
+    #include "../utils/debugger.h"
+#endif
+
 namespace minecraft::client {
+
     inline Client::Client(std::string ip, const short port, const bool debug)
         : ClientBase(std::move(ip), port, debug) {
         using namespace protocol;
+        namespace svr = server_bound;
+        namespace cli = client_bound;
 
-        on<server_bound::login_step::CompressionPacketType>([this](const auto& packet) {
+        on<svr::login_step::CompressionPacketType>([this](const auto& packet) {
             if (auto t = packet.template get<"Threshold">().value(); t >= 0) {
                 compress  = true;
                 threshold = t;
             }
         });
 
-        on<server_bound::login_step::LoginSuccessPacketType>([this](const auto&) {
+        on<svr::login_step::LoginSuccessPacketType>([this](const auto&) {
             state = State::PLAY;
 
-            emit(client_bound::login_step::LoginConfirmPacketType{});
+            emit(cli::login_step::LoginConfirmPacketType{});
         });
 
-        on<server_bound::play_step::SpawnEntityPacketType>([this](const auto& packet) {
-            emit(Package<2>{});
-        });
+        on<svr::play_step::SpawnEntityPacketType>([this](const auto&) { emit(cli::configuration_step::FinishConfigurationPacketType{}); });
 
-        on<server_bound::play_step::KeepAlivePacketType>([this](const auto& packet) { emit(client_bound::play_step::KeepAlivePacketType{Long(packet.template get<"KeepAliveID">().value())}); });
+        on<svr::play_step::SynchronizePlayerPositionPacketType>([this](const auto& packet) { emit(cli::play_step::TeleportConfirmPacketType{packet.template get<"TeleportID">()}); });
+
+        on<svr::play_step::KeepAlivePacketType>([this](const auto& packet) { emit(cli::play_step::KeepAlivePacketType{packet.template get<"KeepAliveID">()}); });
     }
 
     template<protocol::is_package T>
@@ -80,7 +87,7 @@ namespace minecraft::client {
     inline void Client::handleRecv(std::vector<std::byte>& msg, const std::size_t size) {
         using namespace protocol;
 
-        parsePacket(state, msg, compress, [this]<is_package T>(const T& packet) {
+        auto cb = [this]<is_package T>(const T& packet) {
             if (const auto it = packageCallbacks.find(typeid(T)); it != packageCallbacks.end())
                 for (auto& [times, callback] : it->second) {
                     if (times != 0) callback(std::any(packet));
@@ -89,7 +96,17 @@ namespace minecraft::client {
                 }
 
             networkInfo<TO_CLIENT>(std::format("[{}] {}", enumToStr(state), packet.toString()));
-        });
+        };
+
+#ifdef DEBUG
+        Debugger parsePacketDbg(&parsePacket<decltype(cb)>);
+        parsePacketDbg
+#else
+
+        parsePacket
+
+#endif
+            (state, msg, compress, cb);
     }
 
     inline std::vector<std::byte> Client::castChar2T(char* msg, const std::size_t size) const {

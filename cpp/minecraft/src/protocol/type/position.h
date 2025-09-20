@@ -32,16 +32,16 @@ namespace minecraft::protocol {
 
         mutable std::array<std::byte, size_> data{};
 
-        int64_t x_ = 0;
-        int64_t y_ = 0;
-        int64_t z_ = 0;
+        int64_t x_;
+        int64_t y_;
+        int64_t z_;
 
     public:
         using type = std::tuple<int64_t, int64_t, int64_t>;
 
         using serializeType = std::array<std::byte, size_>;
 
-        Position() = default;
+        Position();
 
         Position(int64_t x, int64_t y, int64_t z);
 

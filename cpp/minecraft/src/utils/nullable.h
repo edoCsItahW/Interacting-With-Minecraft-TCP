@@ -27,7 +27,7 @@ namespace minecraft {
 
         using type = T;
 
-        Nullable() = delete;
+        Nullable() = default;
 
         constexpr Nullable(const T& value);
 

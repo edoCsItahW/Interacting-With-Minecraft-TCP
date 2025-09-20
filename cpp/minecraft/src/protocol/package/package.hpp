@@ -21,6 +21,10 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef DEBUG
+    #include "../../utils/debugger.h"
+#endif
+
 /**
  * @if zh
  *
@@ -102,7 +106,7 @@ namespace minecraft::protocol {
 
         template<is_field_item... Ts>
         template<typename F>
-        void FieldMap<Ts...>::on(const std::string key, F&& f) const {
+        void FieldMap<Ts...>::on(const std::string& key, F&& f) const {
             [&]<std::size_t... Is>(std::index_sequence<Is...>) {
                 bool found = false;
 
@@ -153,8 +157,14 @@ namespace minecraft::protocol {
         packetLen -= dataLenShift;
 
         std::vector<std::byte> dataVec{data, data + packetLen};
-        if (dataLen)  // 判断是否启用压缩
+        if (dataLen) {  // 判断是否启用压缩
+#ifdef DEBUG
+            Debugger decompressDataDbg(&decompressData);
+            dataVec = decompressDataDbg(dataVec, dataLen);
+#else
             dataVec = decompressData(dataVec, dataLen);
+#endif
+        }
 
         // 解析数据包ID
         auto [id, idShift] = parseVarInt<int>(dataVec.data());
@@ -198,13 +208,13 @@ namespace minecraft::protocol {
 
         ss << "{ id: " << id_ << ", data: ";
 
-        for (auto b : data_)
-            if (const auto c = static_cast<unsigned char>(b); std::isprint(c))
+        for (std::size_t i{0}; i < size_; ++i)
+            if (const auto c = static_cast<unsigned char>(data_[i]); std::isprint(c))
                 ss << c;
             else
-                ss << "\\x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(b) << " ";
+                ss << (i == 0 ? "" : " ") << "\\0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data_[i]);
 
-        ss << "}";
+        ss << " }";
 
         return ss.str();
     }
@@ -220,18 +230,6 @@ namespace minecraft::protocol {
         auto idBytes = VarInt(I).serialize();
         data.insert_range(data.end(), idBytes);
 
-        // std::apply(
-        //     [&](const auto&... fs) {
-        //         (
-        //             [&] {
-        //                 auto fieldBytes = fs.serialize();
-        //                 data.insert_range(data.end(), fieldBytes);
-        //             }(),
-        //             ...
-        //         );
-        //     },
-        //     fields_
-        // );
         detail::forEach(fields_, [&data](const auto& f) {
             auto fieldBytes = f.serialize();
 
@@ -269,18 +267,6 @@ namespace minecraft::protocol {
     std::vector<std::byte> Package<I, Ts...>::uncompressSerializeImpl() const {
         std::vector<std::byte> result = VarInt(I).serialize();
 
-        // std::apply(
-        //     [&](const auto&... fs) {
-        //         (
-        //             [&] {
-        //                 auto fieldBytes = fs.serialize();
-        //                 result.insert_range(result.end(), fieldBytes);
-        //             }(),
-        //             ...
-        //         );
-        //     },
-        //     fields_
-        // );
         detail::forEach(fields_, [&result](const auto& f) {
             auto fieldBytes = f.serialize();
 
@@ -306,8 +292,14 @@ namespace minecraft::protocol {
         packetLen -= dataLenShift;
 
         std::vector<std::byte> dataVec{data, data + packetLen};
-        if (dataLen)  // 判断是否启用压缩
+        if (dataLen) {  // 判断是否启用压缩
+#ifdef DEBUG
+            Debugger decompressDataDbg(&decompressData);
+            dataVec = decompressDataDbg(dataVec, dataLen);
+#else
             dataVec = decompressData(dataVec, dataLen);
+#endif
+        }
 
         data = dataVec.data();
 
@@ -317,40 +309,19 @@ namespace minecraft::protocol {
 
         if (id != I) throw std::runtime_error("PackageImpl ID mismatch after decompression.");
 
-        std::tuple<typename Ts::type...> fields;
+        std::tuple<typename Ts::type...> fields{};
 
         std::size_t offset = 0;
-        int lastLen        = 0;
 
         // 解析字段
-        // [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-        //     (
-        //         [&] {
-        //             using FieldType = typeOf<Is>;
-        //
-        //             if constexpr (is_array_field<FieldType>)
-        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset, FieldType::category == ArrayType::FIXE ? lastLen : dataLen - offset);
-        //
-        //             else
-        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset);
-        //
-        //             offset += std::get<Is>(fields).size();
-        //
-        //             if constexpr (is_var_int_field<FieldType>) lastLen = std::get<Is>(fields).value();
-        //         }(),
-        //         ...
-        //     );
-        // }(std::make_index_sequence<size>());
         forEachType([&]<FStrChar V, is_field T, detail::is_nullable_fstr auto D>() {
             constexpr auto idx = indexOfName_v<V, Ts...>;
 
-            if constexpr (D == Null) {
+            if constexpr (D == Null)
                 std::get<idx>(fields) = T::deserialize(data + offset);
-            }
 
-            else if constexpr (*D == "__rest__") {
+            else if constexpr (*D == "__rest__")
                 std::get<idx>(fields) = T::deserialize(data + offset, dataLen - offset);
-            }
 
             else {
                 constexpr auto depIdx = indexOfName_v<*D, Ts...>;
@@ -365,8 +336,8 @@ namespace minecraft::protocol {
             offset += std::get<idx>(fields).size();
         });
 
-        if (offset != dataVec.size() - idShift)
-            std::cerr << "Warning: [Package::deserialize] Package data mismatch after decompression. Expected " << dataVec.size() - idShift << " bytes, Actual: " << offset << " bytes." << std::endl;
+        // if (offset != dataVec.size() - idShift)
+        //     std::cerr << "Warning: [Package::deserialize] Package data mismatch after decompression. Expected " << dataVec.size() - idShift << " bytes, Actual: " << offset << " bytes." << std::endl;
 
         return Package(fields);
     }
@@ -382,41 +353,19 @@ namespace minecraft::protocol {
         data += idShift;
         len -= idShift;
 
-        std::tuple<typename Ts::type...> fields;
+        std::tuple<typename Ts::type...> fields{};
 
         std::size_t offset = 0;
-        int lastLen        = 0;
 
         // 解析字段
-        // [&]<std::size_t... Is>(std::index_sequence<Is...>) {
-        //     (
-        //         [&] {
-        //             using FieldType = typeOf<Is>;
-        //
-        //             if constexpr (is_array_field<FieldType>)
-        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset, FieldType::category == ArrayType::FIXE ? lastLen : len - offset);
-        //
-        //             else
-        //                 std::get<Is>(fields) = FieldType::deserialize(data + offset);
-        //
-        //             offset += std::get<Is>(fields).size();
-        //
-        //             if constexpr (is_var_int_field<FieldType>) lastLen = std::get<Is>(fields).value();
-        //         }(),
-        //         ...
-        //     );
-        // }(std::make_index_sequence<size>());
-
         forEachType([&]<FStrChar V, is_field T, detail::is_nullable_fstr auto D>() {
             constexpr auto idx = indexOfName_v<V, Ts...>;
 
-            if constexpr (D == Null) {
+            if constexpr (D == Null)
                 std::get<idx>(fields) = T::deserialize(data + offset);
-            }
 
-            else if constexpr (*D == "__rest__") {
+            else if constexpr (*D == "__rest__")
                 std::get<idx>(fields) = T::deserialize(data + offset, len - offset);
-            }
 
             else {
                 constexpr auto depIdx = indexOfName_v<*D, Ts...>;
@@ -431,7 +380,7 @@ namespace minecraft::protocol {
             offset += std::get<idx>(fields).size();
         });
 
-        if (offset != len) std::cerr << "Warning: [Package::deserialize] Package data mismatch. Expected " << len << " bytes, Actual: " << offset << " bytes." << std::endl;
+        // if (offset != len) std::cerr << "Warning: [Package::deserialize] Package data mismatch. Expected " << len << " bytes, Actual: " << offset << " bytes." << std::endl;
 
         return Package(fields);
     }

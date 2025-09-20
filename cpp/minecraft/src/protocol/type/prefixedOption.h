@@ -29,7 +29,7 @@ namespace minecraft::protocol {
 
         mutable bool cached = false;
 
-        std::size_t size_ = 0;
+        std::size_t size_;
 
         std::optional<T> value_;
 
@@ -38,9 +38,9 @@ namespace minecraft::protocol {
 
         using serializeType = std::vector<std::byte>;
 
-        PrefixedOption() = default;
+        PrefixedOption();
 
-        PrefixedOption(const std::optional<T>& value = std::nullopt);
+        PrefixedOption(const std::optional<T>& value);
 
         [[nodiscard]] std::size_t size() const;
 

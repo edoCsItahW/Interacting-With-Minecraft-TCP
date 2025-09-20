@@ -24,6 +24,11 @@
 namespace minecraft::protocol {
 
     template<typename T>
+    PrefixedArray<T>::PrefixedArray()
+        : value_()
+        , size_(0) {}
+
+    template<typename T>
     PrefixedArray<T>::PrefixedArray(type value)
         : value_(value) {
         size_ = detail::varNumSize(value.size());

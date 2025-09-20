@@ -27,13 +27,13 @@ namespace minecraft::protocol {
 
     inline Boolean::type Boolean::value() const { return value_; }
 
-    inline Boolean::serializeType Boolean::serialize() const {
+    inline Boolean::serializeType Boolean::encode() const {
         if (data.empty()) data = std::array{value_ ? std::byte{1} : std::byte{0}};
 
         return data;
     }
 
-    inline auto Boolean::deserialize(const std::byte* data) { return Boolean{*reinterpret_cast<const bool*>(data)}; }
+    inline auto Boolean::decode(const std::byte* data) { return Boolean{*reinterpret_cast<const bool*>(data)}; }
 
     inline std::string Boolean::toString() const { return value_ ? "true" : "false"; }
 

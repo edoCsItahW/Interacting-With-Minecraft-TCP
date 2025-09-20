@@ -21,6 +21,7 @@
 #include "../../utils/nullable.h"
 #include "../type/angle.h"
 #include "../type/boolean.h"
+#include "../type/compoundArray.h"
 #include "../type/double.h"
 #include "../type/float.h"
 #include "../type/identifier.h"
@@ -52,7 +53,7 @@ namespace minecraft::protocol {
         template<typename T>
         concept is_builtin_field =
             is_boolean_field<T> || is_integer_field<T> || is_uuid_field<T> || is_string_field<T> || is_var_num_field<T> || is_array_field<T> || is_float_field<T> || is_double_field<T>
-            || is_angle_field<T> || is_position_field<T> || is_prefixed_array_field<T> || is_identifier_field<T> || is_option_field<T> || is_prefixed_option_field<T>;
+            || is_angle_field<T> || is_position_field<T> || is_prefixed_array_field<T> || is_identifier_field<T> || is_option_field<T> || is_prefixed_option_field<T> || is_compound_array_field<T>;
 
         template<typename T>
         concept is_custom_field = requires {
@@ -142,7 +143,7 @@ namespace minecraft::protocol {
             auto get() const;
 
             template<typename F>
-            void on(std::string key, F&& f) const;
+            void on(const std::string& key, F&& f) const;
 
             template<FStrChar V>
             [[nodiscard]] constexpr bool has() const;

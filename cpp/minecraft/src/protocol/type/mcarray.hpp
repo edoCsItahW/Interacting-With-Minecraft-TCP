@@ -16,7 +16,9 @@
 #ifndef MCARRAY_HPP
 #define MCARRAY_HPP
 #pragma once
+
 #include "../../utils/utils.h"
+#include <sstream>
 
 namespace minecraft::protocol {
 
@@ -77,12 +79,29 @@ namespace minecraft::protocol {
 
     template<typename T>
     std::string Array<T>::toString() const {
-        return toHexString();
+        std::stringstream ss;
+
+        ss << "[";
+
+        for (std::size_t i{0}; const auto& elem : value_) {
+            if (i > 0) ss << ", ";
+
+            if constexpr (requires { elem.toString(); })
+                ss << elem.toString();
+            else
+                ss << elem;
+
+            i++;
+        }
+
+        ss << "]";
+
+        return ss.str();
     }
 
     template<typename T>
     std::string Array<T>::toHexString() const {
-        return minecraft::toHexString(value_);
+        return minecraft::toHexString(serialize());
     }
 
 

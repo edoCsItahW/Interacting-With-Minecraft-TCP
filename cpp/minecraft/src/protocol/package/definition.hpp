@@ -26,6 +26,7 @@ namespace minecraft::protocol {
         template<typename F>
         void parseKnownPacket(const State state, const std::vector<std::byte>& data, bool compress, const F& f) {
             auto dataPtr = data.data();
+            std::vector<std::byte> decompressedData;
 
             if (compress) {
                 auto [packetLen, packetLenShift] = parseVarInt<int>(dataPtr);
@@ -36,7 +37,19 @@ namespace minecraft::protocol {
                 packetLen -= dataLenShift;
 
                 const auto dataVec = std::vector(dataPtr, dataPtr + packetLen);
-                if (dataLen) dataPtr = decompressData(dataVec, dataLen).data();
+                if (dataLen) {
+#ifdef DEBUG
+                    Debugger decompressDataDbg(&decompressData);
+                    decompressedData = decompressDataDbg(dataVec, dataLen);
+#else
+                    decompressedData = decompressData(dataVec, dataLen);
+#endif
+
+                    dataPtr = decompressedData.data();
+
+                    if (dataPtr == nullptr)
+                        throw std::runtime_error("Decompression failed");
+                }
 
             } else {
                 auto [dataLen, dataLenShift] = parseVarInt<int>(dataPtr);
@@ -45,20 +58,19 @@ namespace minecraft::protocol {
 
             auto [id, idShift] = parseVarInt<int>(dataPtr);
 
-            try {
-                switch (state) {
-                    using enum State;
-                    case HANDSHAKE: parseHandshakePacket<F>(id, data, compress, f); break;
-                    case STATUS: parseStatusPacket<F>(id, data, compress, f); break;
-                    case LOGIN: parseLoginPacket<F>(id, data, compress, f); break;
-                    case PLAY: parsePlayPacket<F>(id, data, compress, f); break;
-                }
-            } catch (const std::exception& e) { throw std::runtime_error("Error parsing packet: " + std::string(e.what())); }
+            switch (state) {
+                using enum State;
+                case HANDSHAKE: parseHandshakePacket<F>(id, data, compress, f); break;
+                case STATUS: parseStatusPacket<F>(id, data, compress, f); break;
+                case LOGIN: parseLoginPacket<F>(id, data, compress, f); break;
+                case CONFIGURATION: parseConfigurationPacket<F>(id, data, compress, f); break;
+                case PLAY: parsePlayPacket<F>(id, data, compress, f); break;
+            }
         }
 
         template<typename F>
-        void parseHandshakePacket(int, const std::vector<std::byte>&, bool, const F&) {
-            throw std::runtime_error("Not packet state found for handshake packet");
+        void parseHandshakePacket(int, const std::vector<std::byte>& data, bool compress, const F& f) {
+            parseUnknownPacket(data, compress, f);
         }
 
         template<typename F>
@@ -68,7 +80,7 @@ namespace minecraft::protocol {
             switch (id) {
                 case 0x00: f(ResponsePacketType::deserialize(data.data(), compress)); break;
                 case 0x01: f(PongPacketType::deserialize(data.data(), compress)); break;
-                default: throw std::runtime_error("Unknown status packet id: " + std::to_string(id));
+                default: parseUnknownPacket(data, compress, f);
             }
         }
 
@@ -82,8 +94,12 @@ namespace minecraft::protocol {
                 case 0x02: f(LoginSuccessPacketType::deserialize(data.data(), compress)); break;
                 case 0x03: f(CompressionPacketType::deserialize(data.data(), compress)); break;
                 case 0x04: f(PluginRequestPacketType::deserialize(data.data(), compress)); break;
-                default: throw std::runtime_error("Unknown login packet id: " + std::to_string(id));
+                default: parseUnknownPacket(data, compress, f);
             }
+        }
+
+        template<typename F>
+        void parseConfigurationPacket(const int id, const std::vector<std::byte>& data, bool compress, const F& f) {
         }
 
         template<typename F>
@@ -94,8 +110,17 @@ namespace minecraft::protocol {
                 case 0x00: f(SpawnEntityPacketType::deserialize(data.data(), compress)); break;
                 case 0x01: f(SpawnExperienceOrbPacketType::deserialize(data.data(), compress)); break;
                 case 0x0B: f(ChangeDifficultyPacketType::deserialize(data.data(), compress)); break;
+                case 0x1B: f(DisconnectPacketType::deserialize(data.data(), compress)); break;
                 case 0x24: f(KeepAlivePacketType::deserialize(data.data(), compress)); break;
-                default: throw std::runtime_error("Unknown play packet id: " + std::to_string(id));
+                case 0x26: f(SetEntityVelocityPacketType::deserialize(data.data(), compress)); break;
+                case 0x29: f(LoginPacketType::deserialize(data.data(), compress)); break;
+                case 0x3C: f(SpawnPlayerPacketType::deserialize(data.data(), compress)); break;
+                case 0x3E: f(SpawnEntity2PacketType::deserialize(data.data(), compress)); break;
+                case 0x56: f(SetPassengersPacketType::deserialize(data.data(), compress)); break;
+                case 0x58: f(UpdateSectionBlocksPacketType::deserialize(data.data(), compress)); break;
+                case 0x62: f(SynchronizePlayerPositionPacketType::deserialize(data.data(), compress)); break;
+                case 0x66: f(UpdateRecipesPacketType::deserialize(data.data(), compress)); break;
+                default: parseUnknownPacket(data, compress, f);
             }
         }
 
@@ -108,9 +133,14 @@ namespace minecraft::protocol {
 
     template<typename F>
     void parsePacket(const State state, const std::vector<std::byte>& data, bool compress, const F& f) {
-        try {
-            detail::parseKnownPacket<F>(state, data, compress, f);
-        } catch (const std::exception& e) { detail::parseUnknownPacket<F>(data, compress, f); }
+#ifdef DEBUG
+        Debugger parseKnownPacketDbg(&detail::parseKnownPacket<F>, [&](const auto& e) {
+            detail::parseUnknownPacket(data, compress, f);
+        });
+        parseKnownPacketDbg(state, data, compress, f);
+#else
+        detail::parseKnownPacket<F>(state, data, compress, f);
+#endif
     }
 
 }  // namespace minecraft::protocol

@@ -29,3 +29,5 @@ add_executable(minecraft_protocol_test
 target_link_libraries(minecraft_protocol_test
         ${CMAKE_SOURCE_DIR}/../zlib/lib/zlibstatic.lib
 )
+
+add_compile_definitions(DEBUG)

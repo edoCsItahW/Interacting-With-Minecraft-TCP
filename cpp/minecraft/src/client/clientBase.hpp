@@ -146,7 +146,7 @@ namespace minecraft::client {
                 if (callback.has_value()) callback->operator()();
 
                 std::string hexMsg;
-                for (std::size_t i = 0; i < size; i++) hexMsg += std::format("\\x{:02x} ", static_cast<unsigned char>(buffer[i]));
+                for (std::size_t i = 0; i < size; i++) hexMsg += std::format("\\0x{:02x} ", static_cast<unsigned char>(buffer[i]));
 
                 networkInfo<TO_SERVER>(hexMsg);
             }

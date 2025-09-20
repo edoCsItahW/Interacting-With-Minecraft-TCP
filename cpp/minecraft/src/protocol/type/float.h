@@ -21,11 +21,13 @@
 #include <string>
 
 namespace minecraft::protocol {
+
     struct Float {
     private:
         mutable std::array<std::byte, 4> data{};
 
         mutable bool cached = false;
+
 
         static constexpr std::size_t size_ = 4;
 

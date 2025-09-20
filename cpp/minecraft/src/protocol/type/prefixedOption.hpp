@@ -23,6 +23,11 @@
 namespace minecraft::protocol {
 
     template<typename T>
+    PrefixedOption<T>::PrefixedOption()
+        : size_(0)
+        , value_(std::nullopt) {}
+
+    template<typename T>
     PrefixedOption<T>::PrefixedOption(const std::optional<T>& value)
         : value_(value) {
         size_ = Boolean::size();
@@ -64,7 +69,7 @@ namespace minecraft::protocol {
 
     template<typename T>
     auto PrefixedOption<T>::deserialize(const std::byte* data) {
-        const auto boolValue = Boolean::deserialize(data).value();
+        const auto boolValue = Boolean::decode(data).value();
         data += Boolean::size();
 
         if (boolValue) {

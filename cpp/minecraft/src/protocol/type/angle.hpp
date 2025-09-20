@@ -19,8 +19,8 @@
 
 #include "../../utils/utils.h"
 #include <cmath>
+#include <format>
 #include <numbers>
-#include <sstream>
 
 namespace minecraft::protocol {
 
@@ -35,32 +35,28 @@ namespace minecraft::protocol {
 
     template<typename T>
     Angle::Angle(T value)
-        : value_(std::is_same_v<T, uint8_t> ? value : normalize(value)) {}
+        : value_(normalize(value)) {}
 
     constexpr std::size_t Angle::size() { return size_; }
 
     inline Angle::type Angle::value() const { return value_; }
 
-    inline Angle::serializeType Angle::serialize() const {
+    inline Angle::encodeType Angle::encode() const {
         if (!cached) {
-            data[0] = value_;
+            data[0] = static_cast<std::byte>(value_);
             cached  = true;
         }
 
         return data;
     }
 
-    inline auto Angle::deserialize(const std::byte* data) { return Angle(static_cast<uint8_t>(data[0])); }
+    inline auto Angle::decode(const std::byte* data) { return Angle(static_cast<uint8_t>(data[0])); }
 
     inline std::string Angle::toString() const {
-        std::ostringstream ss;
-
-        ss << toDegrees() << "° (" << static_cast<int>(value_) << " steps)";
-
-        return ss.str();
+        return std::format("{}° ({} steps)", toDegrees(), static_cast<int>(value_));
     }
 
-    inline std::string Angle::toHexString() const { return minecraft::toHexString(serialize()); }
+    inline std::string Angle::toHexString() const { return minecraft::toHexString(encode()); }
 
     inline float Angle::toDegrees() const { return value_ * DEGREES_PER_STEP; }
 

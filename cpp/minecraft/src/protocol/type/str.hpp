@@ -78,15 +78,22 @@ namespace minecraft::protocol {
 
         const std::byte *ptr = data + bytesRead;
         for (int i = 0; i < length; ++i)
-            // if (auto c = static_cast<char>(ptr[i]); c == '\0')  // 保护设置
-            //     break;
-            // else
-            result.push_back(static_cast<char>(ptr[i]));
+            result += static_cast<char>(ptr[i]);
 
         return String(result);
     }
 
-    inline std::string String::toString() const { return value_; }
+    inline std::string String::toString() const {
+        std::stringstream ss;
+
+        for (std::size_t i = 0; i < value_.size(); ++i)
+            if (std::isprint(static_cast<unsigned char>(value_[i])))
+                ss << value_[i];
+            else
+                ss << (i == 0 ? "" : " ") << "\\0x" << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(value_[i]);
+
+        return ss.str();
+    }
 
     inline std::string String::toHexString() const { return minecraft::toHexString(value_); }
 

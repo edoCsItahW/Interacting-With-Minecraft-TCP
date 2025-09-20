@@ -26,7 +26,7 @@ namespace minecraft::protocol {
     template<typename T = std::byte>
     struct Array {
     private:
-        std::size_t size_;
+        std::size_t size_ = 0;
 
         std::vector<T> value_;
 

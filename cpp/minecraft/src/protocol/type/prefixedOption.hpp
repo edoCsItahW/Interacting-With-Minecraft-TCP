@@ -51,13 +51,13 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    typename PrefixedOption<T>::serializeType PrefixedOption<T>::serialize() const {
-        auto boolBytes = Boolean(value_.has_value()).serialize();
-        serializeType result{boolBytes.begin(), boolBytes.end()};
+    typename PrefixedOption<T>::encodeType PrefixedOption<T>::encode() const {
+        auto boolBytes = Boolean(value_.has_value()).encode();
+        encodeType result{boolBytes.begin(), boolBytes.end()};
 
         if (value_.has_value()) {
-            if constexpr (requires { T::serialize(); }) {
-                auto valueBytes = value_.value().serialize();
+            if constexpr (requires { T::encode(); }) {
+                auto valueBytes = value_.value().encode();
 
                 result.insert_range(result.end(), valueBytes);
             } else
@@ -68,13 +68,13 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    auto PrefixedOption<T>::deserialize(const std::byte* data) {
+    auto PrefixedOption<T>::decode(const std::byte* data) {
         const auto boolValue = Boolean::decode(data).value();
         data += Boolean::size();
 
         if (boolValue) {
-            if constexpr (requires { T::deserialize(data); })
-                return PrefixedOption(T::deserialize(data));
+            if constexpr (requires { T::deencode(data); })
+                return PrefixedOption(T::deencode(data));
 
             else
                 return PrefixedOption(static_cast<T>(*data));
@@ -97,7 +97,7 @@ namespace minecraft::protocol {
 
     template<typename T>
     std::string PrefixedOption<T>::toHexString() const {
-        return minecraft::toHexString(serialize());
+        return minecraft::toHexString(encode());
     }
 
 }  // namespace minecraft::protocol

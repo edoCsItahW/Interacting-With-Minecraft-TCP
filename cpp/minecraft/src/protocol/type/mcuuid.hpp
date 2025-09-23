@@ -63,9 +63,9 @@ namespace minecraft::protocol {
 
     inline UUID::type UUID::value() const { return value_; }
 
-    inline UUID::serializeType UUID::serialize() const { return value_; }
+    inline UUID::encodeType UUID::encode() const { return value_; }
 
-    inline auto UUID::deserialize(const std::byte* data) {
+    inline auto UUID::decode(const std::byte* data) {
         std::array<std::byte, 16> result{};
 
         for (std::size_t i{0}; i < 16; i++) result[i] = data[i];

@@ -41,13 +41,18 @@ namespace minecraft::protocol {
     }
 
     template<typename... Ts>
-    typename CompoundArray<Ts...>::serializeType CompoundArray<Ts...>::serialize() const {
+    typename CompoundArray<Ts...>::encodeType CompoundArray<Ts...>::encode() const {
         if (!cached) {
             [this]<std::size_t... Is>(std::index_sequence<Is...>) {
-                if constexpr (requires { std::get<Is>(value_).serialize(); })
-                    data.insert_range(data.end(), std::get<Is>(value_).serialize());
-                else
-                    data.push_back(static_cast<std::byte>(std::get<Is>(value_)));
+                (
+                    [this] {
+                        if constexpr (requires { std::get<Is>(value_).encode(); })
+                            data.insert_range(data.end(), std::get<Is>(value_).encode());
+                        else
+                            data.push_back(static_cast<std::byte>(std::get<Is>(value_)));
+                    }(),
+                    ...
+                );
             }(std::make_index_sequence<sizeof...(Ts)>{});
 
             cached = true;
@@ -57,15 +62,15 @@ namespace minecraft::protocol {
     }
 
     template<typename... Ts>
-    auto CompoundArray<Ts...>::deserialize(const std::byte* data) {
+    auto CompoundArray<Ts...>::decode(const std::byte* data) {
         type result;
 
         [&]<std::size_t... Is>(std::index_sequence<Is...>) {
             std::size_t shift = 0;
 
             (..., [&] {
-                if constexpr (requires { std::get<Is>(result).deserialize(data); }) {
-                    std::get<Is>(result) = std::get<Is>(value_).deserialize(data + shift);
+                if constexpr (requires { std::get<Is>(result).decode(data); }) {
+                    std::get<Is>(result) = std::tuple_element_t<Is, type>::decode(data + shift);
 
                     shift += std::get<Is>(result).size();
                 }
@@ -103,7 +108,7 @@ namespace minecraft::protocol {
 
     template<typename... Ts>
     std::string CompoundArray<Ts...>::toHexString() const {
-        return minecraft::toHexString(serialize());
+        return minecraft::toHexString(encode());
     }
 
 

@@ -171,7 +171,7 @@ namespace minecraft::protocol {
 
             // 0x5D
             // using SetPassengersPacketType = Package<86, FI<"EntityID", VarInt>, FI<"PassengerCount", VarInt>, FI<"PPassengers", Array<VarInt>, "PassengerCount"_ns>>;
-            using SetEntityMetadataPacketType = Package<86, FI<"EntityID", VarInt>, FI<"Metadata", CompoundArray<Byte, VarInt, >>>;
+            // using SetEntityMetadataPacketType = Package<86, FI<"EntityID", VarInt>, FI<"Metadata", CompoundArray<Byte, VarInt, >>>;
 
             // 0x47
             using UpdateSectionBlocksPacketType = Package<88, FI<"ChunkSectionPostion", Long>, FI<"BlocksArraySize", VarInt>, FI<"Blocks", Array<VarLong>, "BlocksArraySize"_ns>>;

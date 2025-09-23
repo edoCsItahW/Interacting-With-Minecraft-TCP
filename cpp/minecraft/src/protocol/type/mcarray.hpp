@@ -38,7 +38,7 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    typename Array<T>::serializeType Array<T>::serialize() const {
+    typename Array<T>::encodeType Array<T>::encode() const {
         if (!cached) {
             for (const auto& elem : value_)
                 if constexpr (requires { elem.serialize(); })
@@ -53,17 +53,17 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    auto Array<T>::deserialize(const std::byte* data, const VarInt& sizeField) {
-        return deserialize(data, sizeField.value());
+    auto Array<T>::decode(const std::byte* data, const VarInt& sizeField) {
+        return decode(data, sizeField.value());
     }
 
     template<typename T>
-    auto Array<T>::deserialize(const std::byte* data, std::size_t size) {
+    auto Array<T>::decode(const std::byte* data, std::size_t size) {
         type result;
 
-        if constexpr (requires { T::deserialize(data); })
+        if constexpr (requires { T::decode(data); })
             while (size > 0) {
-                auto elem = T::deserialize(data);
+                auto elem = T::decode(data);
 
                 result.push_back(elem);
 
@@ -72,7 +72,8 @@ namespace minecraft::protocol {
             }
 
         else
-            result = std::vector<T>(data, data + size);
+            for (std::size_t i{0}; i < size; i++)
+                result.push_back(static_cast<T>(data[i]));
 
         return Array(result);
     }
@@ -88,8 +89,10 @@ namespace minecraft::protocol {
 
             if constexpr (requires { elem.toString(); })
                 ss << elem.toString();
+            else if constexpr (requires { std::to_string(elem); })
+                ss << std::to_string(elem);
             else
-                ss << elem;
+                ss << static_cast<char>(elem);
 
             i++;
         }
@@ -101,7 +104,7 @@ namespace minecraft::protocol {
 
     template<typename T>
     std::string Array<T>::toHexString() const {
-        return minecraft::toHexString(serialize());
+        return minecraft::toHexString(encode());
     }
 
 

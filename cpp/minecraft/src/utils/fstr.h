@@ -20,6 +20,7 @@
 #include <array>
 
 namespace minecraft {
+
     template<typename T, std::size_t N>
     struct FStr {
         std::array<T, N - 1> data;

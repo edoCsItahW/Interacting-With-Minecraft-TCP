@@ -54,7 +54,7 @@ namespace minecraft::protocol::detail {
     }
 
     template<intOrLong T>
-    typename VarNum<T>::serializeType VarNum<T>::serialize() const {
+    typename VarNum<T>::encodeType VarNum<T>::encode() const {
         if (data.empty()) {
             std::make_unsigned_t<T> uvalue = value_;
 
@@ -73,7 +73,7 @@ namespace minecraft::protocol::detail {
     }
 
     template<intOrLong T>
-    auto VarNum<T>::deserialize(const std::byte *data) {
+    auto VarNum<T>::decode(const std::byte *data) {
         using UT  = std::make_unsigned_t<T>;
         UT result = 0;
         int shift = 0;
@@ -96,7 +96,7 @@ namespace minecraft::protocol::detail {
 
     template<intOrLong T>
     std::string VarNum<T>::toHexString() const {
-        return minecraft::toHexString(serialize());
+        return minecraft::toHexString(encode());
     }
 
 }  // namespace minecraft::protocol::detail

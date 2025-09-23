@@ -26,11 +26,18 @@ namespace minecraft::protocol {
     /** @struct Boolean
      *
      * @if zh
-     *
-     * @brief 表示布尔字段的结构体。
-     * @details 表示Minecraft协议中的布尔数据类型，使用一个字节表示true或false。
+     * @brief Minecraft协议布尔字段封装（1字节表示true/false）
+     * @details
+     * - 使用单字节表示布尔值：0x00表示false，0x01表示true
+     * - 提供布尔值序列化缓存机制
+     * @note 线程安全：const方法线程安全，非const方法需外部同步
      *
      * @else
+     * @brief Minecraft protocol boolean field encapsulation (1 byte for true/false)
+     * @details
+     * - Uses single byte to represent boolean: 0x00 for false, 0x01 for true
+     * - Provides boolean serialization caching mechanism
+     * @note Thread safety: const methods are thread-safe, non-const methods require external synchronization
      *
      * @endif
      * */
@@ -38,112 +45,106 @@ namespace minecraft::protocol {
     private:
         /**
          * @if zh
-         *
-         * @brief 该字段的字节数。
-         * @details 该字段硬被编码后所占用的字节数。由于Boolean字段使用一个字节表示，因此该值为1.
-         * @invariant 硬编码为1。
+         * @brief 序列化字节长度（固定1字节）
+         * @invariant 恒为1
          *
          * @else
+         * @brief Serialized byte length (fixed 1 byte)
+         * @invariant Always 1
          *
          * @endif
-         *
-         * @private @memberof Boolean
-         * @qualified constexpr
-         * */
+         */
         static constexpr std::size_t size_ = 1;
 
         /**
          * @if zh
-         *
-         * @brief 缓存的已编码数据。
-         * @details 该字段用于缓存已编码的数据，以提高序列化的效率。
+         * @brief 序列化数据缓存
+         * @details 避免重复序列化，修改value_后自动失效
+         * @note mutable允许const方法修改缓存（逻辑恒定性）
          *
          * @else
+         * @brief Serialized data cache
+         * @details Avoids repeated serialization, invalidated when value_ changes
+         * @note mutable enables modification by const methods (logical constness)
          *
          * @endif
-         * */
+         */
         mutable std::array<std::byte, size_> data{};
 
         /**
          * @if zh
-         *
-         * @brief 以C++类型表示的布尔值。
-         * @details 该字段用于存储布尔值。
+         * @brief 布尔值
+         * @invariant 始终为true或false
          *
          * @else
+         * @brief Boolean value
+         * @invariant Always true or false
          *
          * @endif
-         *
-         * @private @memberof Boolean
-         * @see value()
-         * */
+         */
         bool value_;
 
     public:
-        /** @typedef type
-         *
+        /**
          * @if zh
-         *
-         * @brief 该结构体的原始值类型。
-         * @details 该结构体所维护的类型，设计为Boolean的C++表示类型。
+         * @brief 原始值类型（bool）
          *
          * @else
-         *
+         * @brief Raw value type (bool)
          *
          * @endif
-         *
-         * */
+         */
         using type = bool;
 
-        /** @typedef encodeType
-         *
+        /**
          * @if zh
-         *
-         * @brief 该结构体的编码值类型。
-         * @details 该结构体编码后的序列类型，且为字段类型的类型依赖接口之一。
+         * @brief 序列化类型（std::array<std::byte, 1>）
          *
          * @else
+         * @brief Serialization type (std::array<std::byte, 1>)
          *
          * @endif
-         * */
+         */
         using encodeType = std::array<std::byte, size_>;
 
         Boolean() = default;
 
         /**
          * @if zh
-         *
-         * @brief 构造函数。
-         * @details 构造函数，通过布尔值进行初始化。
-         * @param value 传入的布尔值。
+         * @brief 构造函数
+         * @param value 布尔值
+         * @post value_ = value
          *
          * @else
+         * @brief Constructor
+         * @param value Boolean value
+         * @post value_ = value
          *
          * @endif
-         * */
+         */
         Boolean(bool value);
 
         /**
          * @if zh
-         *
-         * @brief 获取该字段的字节数。
-         * @return 返回该字段的字节数。
+         * @brief 获取序列化长度
+         * @return 固定1字节
          *
          * @else
+         * @brief Get serialization length
+         * @return Fixed 1 byte
          *
          * @endif
-         *
-         * @qualifier constexpr
-         * */
+         */
         [[nodiscard]] static constexpr std::size_t size();
 
         /**
          * @if zh
-         *
-         * @brief 获取该字段的值。
-         * @return 返回该字段的C++表示值。
+         * @brief 获取布尔值
+         * @return true或false
          *
          * @else
+         * @brief Get boolean value
+         * @return true or false
          *
          * @endif
          */
@@ -151,12 +152,14 @@ namespace minecraft::protocol {
 
         /**
          * @if zh
-         *
-         * @brief 获取该字段的编码值。
-         * @details 对该字段的值进行编码，缓存后返回编码的数据。
-         * @return 返回编码后的序列。
+         * @brief 序列化为字节数组
+         * @details 使用缓存机制避免重复计算
+         * @return 包含单个字节的数组（0x00或0x01）
          *
          * @else
+         * @brief Serialize to byte array
+         * @details Uses caching to avoid recomputation
+         * @return Single-byte array (0x00 or 0x01)
          *
          * @endif
          */
@@ -164,23 +167,60 @@ namespace minecraft::protocol {
 
         /**
          * @if zh
-         *
-         * @brief 解码函数。
-         * @details 将传入的字节数据解码为Boolean字段。
-         * @param data 字节数据。
-         * @return 数据表示的Boolean类型字段。
+         * @brief 从字节数据反序列化
+         * @param data 字节数据指针（必须包含至少1字节）
+         * @return 反序列化的Boolean对象
+         * @pre data != nullptr
          *
          * @else
+         * @brief Deserialize from byte data
+         * @param data Byte data pointer (must contain at least 1 byte)
+         * @return Deserialized Boolean object
+         * @pre data != nullptr
          *
          * @endif
          */
         static auto decode(const std::byte* data);
 
+        /**
+         * @if zh
+         * @brief 获取可读字符串表示
+         * @return "true"或"false"
+         *
+         * @else
+         * @brief Get human-readable string representation
+         * @return "true" or "false"
+         *
+         * @endif
+         */
         [[nodiscard]] std::string toString() const;
 
+        /**
+         * @if zh
+         * @brief 获取十六进制表示
+         * @return 单字节十六进制字符串（"0x00"或"0x01"）
+         *
+         * @else
+         * @brief Get hexadecimal representation
+         * @return Single-byte hex string ("0x00" or "0x01")
+         *
+         * @endif
+         */
         [[nodiscard]] std::string toHexString() const;
     };
 
+    /** @concept is_boolean_field
+     *
+     * @if zh
+     * @brief 类型特征检查：是否为Boolean类型
+     * @tparam T 待检查类型
+     *
+     * @else
+     * @brief Type trait check: whether is Boolean type
+     * @tparam T Type to be checked
+     *
+     * @endif
+     */
     template<typename T>
     concept is_boolean_field = std::is_same_v<T, Boolean>;
 

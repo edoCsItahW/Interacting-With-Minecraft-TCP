@@ -57,16 +57,13 @@ namespace minecraft::protocol {
 
         template<typename T>
         concept is_custom_field = requires {
-            T::deserialize;
+            T::decode;
 
-            requires std::is_invocable_v<decltype(T::deserialize), const std::byte*>;
+            requires std::is_invocable_v<decltype(T::decode), const std::byte*>;
 
             requires requires(T t) {
-                { t.serialize() };
-                requires detail::is_byte_array_v<std::remove_cvref_t<typename T::serializeType>>;
-            } || requires {
-                { T::serialize() };
-                requires detail::is_byte_array_v<std::remove_cvref_t<typename T::serializeType>>;
+                { t.encode() };
+                requires detail::is_byte_array_v<std::remove_cvref_t<typename T::encodeType>>;
             };
         };
 

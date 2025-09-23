@@ -33,6 +33,7 @@ namespace minecraft::protocol {
      * - 提供度/弧度转换和序列化缓存机制
      * @note 线程安全：const方法线程安全，非const方法需外部同步
      *
+     *
      * @else
      * @brief Minecraft protocol angle field encapsulation (1 byte for 0-360 degrees)
      * @details
@@ -303,13 +304,12 @@ namespace minecraft::protocol {
         float toRadians() const;
     };
 
-    /**
+    /** @concept is_angle_field
+     *
      * @if zh
-     * @concept is_angle_field
      * @brief 类型特征检查：是否为Angle类型
      *
      * @else
-     * @concept is_angle_field
      * @brief Type trait check: whether is Angle type
      *
      * @endif

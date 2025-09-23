@@ -47,11 +47,11 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    typename PrefixedArray<T>::serializeType PrefixedArray<T>::serialize() const {
+    typename PrefixedArray<T>::encodeType PrefixedArray<T>::encode() const {
         if (!cached) {
-            data = VarInt(size_).serialize();
+            data = VarInt(size_).encode();
 
-            for (const auto& elem : value_) data.insert_range(data.end(), elem.serialize());
+            for (const auto& elem : value_) data.insert_range(data.end(), elem.encode());
 
             cached = true;
         }
@@ -60,14 +60,14 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    auto PrefixedArray<T>::deserialize(const std::byte* data) {
+    auto PrefixedArray<T>::decode(const std::byte* data) {
         auto [count, countShift] = parseVarInt<int>(data);
         data += countShift;
 
         std::vector<T> resVec;
 
         for (int i = 0; i < count; i++) {
-            auto elem = T::deserialize(data);
+            auto elem = T::decode(data);
 
             resVec.push_back(elem);
 
@@ -100,7 +100,7 @@ namespace minecraft::protocol {
 
     template<typename T>
     std::string PrefixedArray<T>::toHexString() const {
-        return minecraft::toHexString(serialize());
+        return minecraft::toHexString(encode());
     }
 
 }  // namespace minecraft::protocol

@@ -42,7 +42,7 @@ namespace minecraft::protocol {
 
     inline Position::type Position::value() const { return value_; }
 
-    inline Position::serializeType Position::serialize() const {
+    inline Position::encodeType Position::encode() const {
         if (!cached) {
             const auto v = (x_ & 0x3FFFFFF) << 38 | (y_ & 0xFFF) << 26 | z_ & 0x3FFFFFF;
 
@@ -54,8 +54,8 @@ namespace minecraft::protocol {
         return data;
     }
 
-    inline auto Position::deserialize(const std::byte* data) {
-        const auto v = Long::deserialize(data).value();
+    inline auto Position::decode(const std::byte* data) {
+        const auto v = Long::decode(data).value();
 
         auto x = v >> 38;
         auto y = (v << 52) >> 52;
@@ -70,7 +70,7 @@ namespace minecraft::protocol {
 
     inline std::string Position::toString() const { return "(" + std::to_string(x_) + ", " + std::to_string(y_) + ", " + std::to_string(z_) + ")"; }
 
-    inline std::string Position::toHexString() const { return minecraft::toHexString(serialize()); }
+    inline std::string Position::toHexString() const { return minecraft::toHexString(encode()); }
 
 
 }  // namespace minecraft::protocol

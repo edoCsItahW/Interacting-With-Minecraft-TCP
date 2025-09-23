@@ -27,7 +27,7 @@ namespace minecraft::protocol {
 
     inline Boolean::type Boolean::value() const { return value_; }
 
-    inline Boolean::serializeType Boolean::encode() const {
+    inline Boolean::encodeType Boolean::encode() const {
         if (data.empty()) data = std::array{value_ ? std::byte{1} : std::byte{0}};
 
         return data;

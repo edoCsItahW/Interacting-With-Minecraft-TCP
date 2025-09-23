@@ -28,7 +28,7 @@ namespace minecraft::protocol {
 
     inline Float::type Float::value() const noexcept { return value_; }
 
-    inline Float::serializeType Float::serialize() const {
+    inline Float::encodeType Float::encode() const {
         if (!cached) {
             uint32_t intValue;
 
@@ -44,7 +44,7 @@ namespace minecraft::protocol {
         return data;
     }
 
-    inline auto Float::deserialize(const std::byte* data) {
+    inline auto Float::decode(const std::byte* data) {
         uint32_t intValue = 0;
 
         for (std::size_t i = 0; i < size_; ++i) intValue |= static_cast<uint32_t>(data[i]) << (24 - i * 8);
@@ -59,7 +59,7 @@ namespace minecraft::protocol {
 
     inline std::string Float::toString() const { return std::to_string(value_); }
 
-    inline std::string Float::toHexString() const { return minecraft::toHexString(serialize()); }
+    inline std::string Float::toHexString() const { return minecraft::toHexString(encode()); }
 
 }  // namespace minecraft::protocol
 

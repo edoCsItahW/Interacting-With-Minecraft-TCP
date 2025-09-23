@@ -42,7 +42,7 @@ namespace minecraft::protocol::detail {
     }
 
     template<typename T>
-    typename Integer<T>::serializeType Integer<T>::serialize() const {
+    typename Integer<T>::encodeType Integer<T>::encode() const {
         if (!cached) {
             using UT  = std::make_unsigned_t<T>;
             UT uvalue = static_cast<UT>(value_);
@@ -63,7 +63,7 @@ namespace minecraft::protocol::detail {
     }
 
     template<typename T>
-    auto Integer<T>::deserialize(const std::byte *data) {
+    auto Integer<T>::decode(const std::byte *data) {
         constexpr auto size = sizeof(T);
 
         using UT  = std::make_unsigned_t<T>;

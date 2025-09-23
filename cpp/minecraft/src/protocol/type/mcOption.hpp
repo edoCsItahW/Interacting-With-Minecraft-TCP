@@ -48,11 +48,11 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    typename Option<T>::serializeType Option<T>::serialize() const {
+    typename Option<T>::encodeType Option<T>::encode() const {
         if (!cached) {
             if (value_.has_value()) {
-                if constexpr (requires { T::serialize(); })
-                    data = value_.value().serialize();
+                if constexpr (requires { T::encode(); })
+                    data = value_.value().encode();
 
                 else
                     data.push_back(static_cast<std::byte>(*value_));
@@ -65,10 +65,10 @@ namespace minecraft::protocol {
     }
 
     template<typename T>
-    auto Option<T>::deserialize(const std::byte* data, const Boolean& boolField) {
+    auto Option<T>::decode(const std::byte* data, const Boolean& boolField) {
         if (boolField.value()) {
-            if constexpr (requires { T::deserialize(data); })
-                return Option{T::deserialize(data)};
+            if constexpr (requires { T::decode(data); })
+                return Option{T::decode(data)};
 
             else
                 return Option{static_cast<T>(*data)};
@@ -95,7 +95,7 @@ namespace minecraft::protocol {
 
     template<typename T>
     std::string Option<T>::toHexString() const {
-        if (value_.has_value()) return minecraft::toHexString(serialize());
+        if (value_.has_value()) return minecraft::toHexString(encode());
 
         return "";
     }

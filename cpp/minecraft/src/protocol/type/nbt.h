@@ -6,27 +6,29 @@
 // permission, please contact the author: 2207150234@st.sziit.edu.cn
 
 /**
- * @file identifier.hpp
+ * @file nbt.h
  * @author edocsitahw
  * @version 1.1
- * @date 2025/09/14 11:19
+ * @date 2025/09/20 23:31
  * @brief
  * @copyright CC BY-NC-SA 2025. All rights reserved.
  * */
-#ifndef IDENTIFIER_HPP
-#define IDENTIFIER_HPP
+#ifndef NBT_H
+#define NBT_H
 #pragma once
+
+
 
 namespace minecraft::protocol {
 
-    inline Identifier::Identifier()
-        : String() {}
+    struct NBT {
 
-    inline Identifier::Identifier(const std::string& str)
-        : String(str) {}
+        [[nodiscard]] encodeType encode() const;
 
-    inline auto Identifier::decode(const std::byte* data) { return Identifier(String::decode(data).value()); }
+        static auto decode(const std::byte* data);
 
-}  // namespace minecraft::protocol
+    };
 
-#endif  // IDENTIFIER_HPP
+}
+
+#endif  // NBT_H

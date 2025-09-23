@@ -227,11 +227,11 @@ namespace minecraft::protocol {
     std::vector<std::byte> Package<I, Ts...>::compressSerializeImpl(int threshold) const {
         std::vector<std::byte> data;
 
-        auto idBytes = VarInt(I).serialize();
+        auto idBytes = VarInt(I).encode();
         data.insert_range(data.end(), idBytes);
 
         detail::forEach(fields_, [&data](const auto& f) {
-            auto fieldBytes = f.serialize();
+            auto fieldBytes = f.encode();
 
             data.insert_range(data.end(), fieldBytes);
         });
@@ -253,8 +253,8 @@ namespace minecraft::protocol {
 
         std::vector<std::byte> result;
 
-        auto sizeBytes      = VarInt(static_cast<int>(cSize)).serialize();
-        auto packetLenBytes = VarInt(static_cast<int>(sizeBytes.size() + cData.size())).serialize();
+        auto sizeBytes      = VarInt(static_cast<int>(cSize)).encode();
+        auto packetLenBytes = VarInt(static_cast<int>(sizeBytes.size() + cData.size())).encode();
 
         result.insert_range(result.end(), packetLenBytes);
         result.insert_range(result.end(), sizeBytes);
@@ -265,15 +265,15 @@ namespace minecraft::protocol {
 
     template<int I, is_field_item... Ts>
     std::vector<std::byte> Package<I, Ts...>::uncompressSerializeImpl() const {
-        std::vector<std::byte> result = VarInt(I).serialize();
+        std::vector<std::byte> result = VarInt(I).encode();
 
         detail::forEach(fields_, [&result](const auto& f) {
-            auto fieldBytes = f.serialize();
+            auto fieldBytes = f.encode();
 
             result.insert_range(result.end(), fieldBytes);
         });
 
-        const auto sizeBytes = VarInt(static_cast<int>(result.size())).serialize();
+        const auto sizeBytes = VarInt(static_cast<int>(result.size())).encode();
 
         result.insert_range(result.begin(), sizeBytes);
 
@@ -318,10 +318,10 @@ namespace minecraft::protocol {
             constexpr auto idx = indexOfName_v<V, Ts...>;
 
             if constexpr (D == Null)
-                std::get<idx>(fields) = T::deserialize(data + offset);
+                std::get<idx>(fields) = T::decode(data + offset);
 
             else if constexpr (*D == "__rest__")
-                std::get<idx>(fields) = T::deserialize(data + offset, dataLen - offset);
+                std::get<idx>(fields) = T::decode(data + offset, dataLen - offset);
 
             else {
                 constexpr auto depIdx = indexOfName_v<*D, Ts...>;
@@ -330,7 +330,7 @@ namespace minecraft::protocol {
 
                 auto dep = std::get<static_cast<std::size_t>(depIdx)>(fields);
 
-                std::get<idx>(fields) = T::deserialize(data + offset, dep);
+                std::get<idx>(fields) = T::decode(data + offset, dep);
             }
 
             offset += std::get<idx>(fields).size();
@@ -362,10 +362,10 @@ namespace minecraft::protocol {
             constexpr auto idx = indexOfName_v<V, Ts...>;
 
             if constexpr (D == Null)
-                std::get<idx>(fields) = T::deserialize(data + offset);
+                std::get<idx>(fields) = T::decode(data + offset);
 
             else if constexpr (*D == "__rest__")
-                std::get<idx>(fields) = T::deserialize(data + offset, len - offset);
+                std::get<idx>(fields) = T::decode(data + offset, len - offset);
 
             else {
                 constexpr auto depIdx = indexOfName_v<*D, Ts...>;
@@ -374,7 +374,7 @@ namespace minecraft::protocol {
 
                 auto dep = std::get<static_cast<std::size_t>(depIdx)>(fields);
 
-                std::get<idx>(fields) = T::deserialize(data + offset, dep);
+                std::get<idx>(fields) = T::decode(data + offset, dep);
             }
 
             offset += std::get<idx>(fields).size();

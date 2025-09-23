@@ -42,14 +42,14 @@ void varNum_test() {
 
     auto rVarInt = protocol::VarInt(25565);
 
-    auto rVarIntBytes = rVarInt.serialize();
+    auto rVarIntBytes = rVarInt.encode();
 
-    std::cout << "VarInt serialized bytes: " << std::endl;
+    std::cout << "VarInt encoded bytes: " << std::endl;
     print_bytes(rVarIntBytes);
 
-    auto rVarIntDeserialized = protocol::VarInt::deserialize(rVarIntBytes.data());
+    auto rVarIntDeencoded = protocol::VarInt::decode(rVarIntBytes.data());
 
-    std::cout << "VarInt deserialized value: " << rVarIntDeserialized.value() << std::endl << std::endl;
+    std::cout << "VarInt decoded value: " << rVarIntDeencoded.value() << std::endl << std::endl;
 }
 
 void integer_test() {
@@ -59,26 +59,26 @@ void integer_test() {
 
     auto rInt = Int(25565);
 
-    auto rIntBytes = rInt.serialize();
+    auto rIntBytes = rInt.encode();
 
-    std::cout << "Int serialized bytes: " << std::endl;
+    std::cout << "Int encoded bytes: " << std::endl;
     print_bytes(rIntBytes);
 
-    auto rIntDeserialized = Int::deserialize(rIntBytes.data());
-    std::cout << "Int deserialized value: " << rIntDeserialized.value() << std::endl << std::endl;
+    auto rIntDeencoded = Int::decode(rIntBytes.data());
+    std::cout << "Int decoded value: " << rIntDeencoded.value() << std::endl << std::endl;
 
     // 运行期UShort测试
 
     auto rUShort = UShort(25565);
 
-    auto rUShortBytes = rUShort.serialize();
+    auto rUShortBytes = rUShort.encode();
 
-    std::cout << "UShort serialized bytes: " << std::endl;
+    std::cout << "UShort encoded bytes: " << std::endl;
     print_bytes(rUShortBytes);
 
-    auto rUShortDeserialized = UShort::deserialize(rUShortBytes.data());
+    auto rUShortDeencoded = UShort::decode(rUShortBytes.data());
 
-    std::cout << "UShort deserialized value: " << rUShortDeserialized.value() << std::endl << std::endl;
+    std::cout << "UShort decoded value: " << rUShortDeencoded.value() << std::endl << std::endl;
 }
 
 void str_test() {
@@ -87,14 +87,14 @@ void str_test() {
 
     auto rStr = String("Hello, world!");
 
-    auto rStrBytes = rStr.serialize();
+    auto rStrBytes = rStr.encode();
 
-    std::cout << "String serialized bytes: " << std::endl;
+    std::cout << "String encoded bytes: " << std::endl;
     print_bytes(rStrBytes);
 
-    auto rStrDeserialized = String::deserialize(rStrBytes.data());
+    auto rStrDeencoded = String::decode(rStrBytes.data());
 
-    std::cout << "String deserialized value: " << rStrDeserialized.value() << std::endl << std::endl;
+    std::cout << "String decoded value: " << rStrDeencoded.value() << std::endl << std::endl;
 }
 
 void mcuuid_test() {
@@ -102,14 +102,14 @@ void mcuuid_test() {
     // 运行期MCUUID测试
     auto rMCUUID = protocol::UUID(protocol::genUUID("petter"));
 
-    auto rMCUUIDBytes = rMCUUID.serialize();
+    auto rMCUUIDBytes = rMCUUID.encode();
 
-    std::cout << "MCUUID serialized bytes: " << std::endl;
+    std::cout << "MCUUID encoded bytes: " << std::endl;
     print_bytes(rMCUUIDBytes);
 
-    auto rMCUUIDDeserialized = protocol::UUID::deserialize(rMCUUIDBytes.data());
+    auto rMCUUIDDeencoded = protocol::UUID::decode(rMCUUIDBytes.data());
 
-    std::cout << "MCUUID deserialized value: " << rMCUUIDDeserialized.toString() << std::endl << std::endl;
+    std::cout << "MCUUID decoded value: " << rMCUUIDDeencoded.toString() << std::endl << std::endl;
 }
 
 void package_test() {
@@ -118,12 +118,12 @@ void package_test() {
 
     auto handShakeBytes = handShake.serialize(false, -1);
 
-    std::cout << "HandShake serialized bytes: " << std::endl;
+    std::cout << "HandShake encoded bytes: " << std::endl;
     print_bytes(handShakeBytes);
 
-    auto handShakeDeserialized = protocol::client_bound::handshake_step::HandShakePacketType::deserialize(handShakeBytes.data());
+    auto handShakeDeencoded = protocol::client_bound::handshake_step::HandShakePacketType::deserialize(handShakeBytes.data());
 
-    std::cout << "HandShake deserialized value: " << handShakeDeserialized.toString() << std::endl;
+    std::cout << "HandShake decoded value: " << handShakeDeencoded.toString() << std::endl;
 }
 
 void client_test() {

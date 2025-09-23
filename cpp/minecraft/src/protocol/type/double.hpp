@@ -28,7 +28,7 @@ namespace minecraft::protocol {
 
     inline Double::type Double::value() const noexcept { return value_; }
 
-    inline Double::serializeType Double::serialize() const {
+    inline Double::encodeType Double::encode() const {
         if (!cached) {
             uint64_t intValue;
 
@@ -44,7 +44,7 @@ namespace minecraft::protocol {
         return data;
     }
 
-    inline auto Double::deserialize(const std::byte* data) {
+    inline auto Double::decode(const std::byte* data) {
         uint64_t intValue = 0;
 
         for (std::size_t i = 0; i < size_; ++i) intValue |= static_cast<uint64_t>(data[i]) << (56 - i * 8);
@@ -59,7 +59,7 @@ namespace minecraft::protocol {
 
     inline std::string Double::toString() const { return std::to_string(value_); }
 
-    inline std::string Double::toHexString() const { return minecraft::toHexString(serialize()); }
+    inline std::string Double::toHexString() const { return minecraft::toHexString(encode()); }
 
 
 }  // namespace minecraft::protocol

@@ -116,7 +116,7 @@ namespace minecraft::protocol {
                 case 0x29: f(LoginPacketType::deserialize(data.data(), compress)); break;
                 case 0x3C: f(SpawnPlayerPacketType::deserialize(data.data(), compress)); break;
                 case 0x3E: f(SpawnEntity2PacketType::deserialize(data.data(), compress)); break;
-                case 0x56: f(SetPassengersPacketType::deserialize(data.data(), compress)); break;
+                // case 0x56: f(SetPassengersPacketType::deserialize(data.data(), compress)); break;
                 case 0x58: f(UpdateSectionBlocksPacketType::deserialize(data.data(), compress)); break;
                 case 0x62: f(SynchronizePlayerPositionPacketType::deserialize(data.data(), compress)); break;
                 case 0x66: f(UpdateRecipesPacketType::deserialize(data.data(), compress)); break;

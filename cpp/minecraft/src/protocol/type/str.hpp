@@ -53,10 +53,10 @@ namespace minecraft::protocol {
 
     inline String::type String::value() const { return value_; }
 
-    inline String::serializeType String::serialize() const {
+    inline String::encodeType String::encode() const {
         if (!cached) {
             auto varInt    = VarInt(static_cast<int>(value_.size()));
-            auto sizeBytes = varInt.serialize();
+            auto sizeBytes = varInt.encode();
 
             data.reserve(sizeBytes.size() + value_.size());
 
@@ -70,7 +70,7 @@ namespace minecraft::protocol {
         return data;
     }
 
-    inline auto String::deserialize(const std::byte *data) {
+    inline auto String::decode(const std::byte *data) {
         auto [length, bytesRead] = parseVarInt<int>(data);
 
         std::string result;
